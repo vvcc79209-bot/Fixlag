@@ -1,59 +1,98 @@
--- ===============================
--- ROBLOX EXTREME FPS BOOST SCRIPT
--- ===============================
+-- FIX LAG ANDROID | KHÔNG XOÁ NHÂN VẬT
+-- Xoá hiệu ứng lướt, skill, sóng biển
 
+local Players = game:GetService("Players")
 local Lighting = game:GetService("Lighting")
 local Terrain = workspace:FindFirstChildOfClass("Terrain")
 
--- Tắt toàn bộ hiệu ứng ánh sáng
+------------------------------------------------
+-- LIGHTING (giảm gánh nặng)
+------------------------------------------------
 Lighting.GlobalShadows = false
 Lighting.FogEnd = 9e9
 Lighting.Brightness = 1
-Lighting.ExposureCompensation = 0
-Lighting.ClockTime = 14
 Lighting.EnvironmentDiffuseScale = 0
 Lighting.EnvironmentSpecularScale = 0
 Lighting.OutdoorAmbient = Color3.fromRGB(128,128,128)
 
--- Xóa các hiệu ứng nặng
+------------------------------------------------
+-- XOÁ EFFECT TRONG LIGHTING
+------------------------------------------------
 for _,v in pairs(Lighting:GetChildren()) do
-    if v:IsA("BloomEffect")
-    or v:IsA("SunRaysEffect")
-    or v:IsA("BlurEffect")
-    or v:IsA("ColorCorrectionEffect")
-    or v:IsA("DepthOfFieldEffect") then
-        v:Destroy()
-    end
+	if v:IsA("BloomEffect")
+	or v:IsA("SunRaysEffect")
+	or v:IsA("BlurEffect")
+	or v:IsA("ColorCorrectionEffect")
+	or v:IsA("DepthOfFieldEffect") then
+		v:Destroy()
+	end
 end
 
--- Giảm chất lượng terrain
+------------------------------------------------
+-- GIẢM CHẤT LƯỢNG TERRAIN / NƯỚC
+------------------------------------------------
 if Terrain then
-    Terrain.WaterWaveSize = 0
-    Terrain.WaterWaveSpeed = 0
-    Terrain.WaterReflectance = 0
-    Terrain.WaterTransparency = 1
+	Terrain.WaterWaveSize = 0
+	Terrain.WaterWaveSpeed = 0
+	Terrain.WaterReflectance = 0
+	Terrain.WaterTransparency = 1
 end
 
--- Ép vật liệu về Plastic + xám (giảm GPU)
-for _,obj in pairs(workspace:GetDescendants()) do
-    if obj:IsA("BasePart") then
-        obj.Material = Enum.Material.Plastic
-        obj.Reflectance = 0
-        obj.CastShadow = false
-        obj.Color = Color3.fromRGB(140,140,140)
-    elseif obj:IsA("Decal") or obj:IsA("Texture") then
-        obj.Transparency = 1
-    elseif obj:IsA("ParticleEmitter")
-    or obj:IsA("Trail")
-    or obj:IsA("Smoke")
-    or obj:IsA("Fire") then
-        obj.Enabled = false
-    end
+------------------------------------------------
+-- XOÁ HIỆU ỨNG SKILL / LƯỚT (AN TOÀN)
+------------------------------------------------
+local function ClearEffects(obj)
+	for _,v in pairs(obj:GetDescendants()) do
+		if v:IsA("ParticleEmitter")
+		or v:IsA("Trail")
+		or v:IsA("Beam")
+		or v:IsA("Fire")
+		or v:IsA("Smoke")
+		or v:IsA("Sparkles")
+		or v:IsA("Explosion")
+		or v:IsA("PointLight")
+		or v:IsA("SurfaceLight")
+		or v:IsA("SpotLight") then
+			v:Destroy()
+		end
+	end
 end
 
--- Giảm render client
-settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
-settings().Rendering.EagerBulkExecution = false
-settings().Rendering.MeshPartDetailLevel = Enum.MeshPartDetailLevel.Level01
+-- Map + Workspace
+ClearEffects(workspace)
 
-print("✅ ROBLOX FIX LAG: FPS BOOST ON")
+------------------------------------------------
+-- BẢO VỆ NHÂN VẬT (KHÔNG XOÁ PLAYER)
+------------------------------------------------
+for _,plr in pairs(Players:GetPlayers()) do
+	if plr.Character then
+		ClearEffects(plr.Character)
+	end
+	plr.CharacterAdded:Connect(function(char)
+		task.wait(1)
+		ClearEffects(char)
+	end)
+end
+
+------------------------------------------------
+-- TỰ ĐỘNG XOÁ EFFECT MỚI SINH RA (SKILL)
+------------------------------------------------
+workspace.DescendantAdded:Connect(function(v)
+	if v:IsA("ParticleEmitter")
+	or v:IsA("Trail")
+	or v:IsA("Beam")
+	or v:IsA("Explosion")
+	or v:IsA("Fire")
+	or v:IsA("Smoke")
+	or v:IsA("Sparkles")
+	or v:IsA("PointLight")
+	or v:IsA("SurfaceLight")
+	or v:IsA("SpotLight") then
+		task.wait()
+		if v and v.Parent then
+			v:Destroy()
+		end
+	end
+end)
+
+print("✅ Fix Lag ON | Không xoá nhân vật | Đã tắt hiệu ứng skill/lướt/sóng")
