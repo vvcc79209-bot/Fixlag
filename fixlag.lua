@@ -1,17 +1,16 @@
--- BLOX FRUITS FIX LAG SEA 3
--- Chỉ xám mặt đất | Giữ bầu trời | Xoá effect dư thừa | Không lỗi
+-- BLOX FRUITS FIX LAG SEA 1-3
+-- Fix xoay | Xoá cây + props dư | Xoá effect skill | An toàn
 
 local Players = game:GetService("Players")
 local Lighting = game:GetService("Lighting")
 local Terrain = workspace:FindFirstChildOfClass("Terrain")
 
 ------------------------------------------------
--- KHÔNG ĐỤNG SKY / LIGHTING MÀU
+-- LIGHTING (KHÔNG ĐỔI MÀU TRỜI)
 ------------------------------------------------
 Lighting.GlobalShadows = false
 Lighting.FogEnd = 9e9
 
--- Xoá effect nặng trong Lighting (KHÔNG đổi màu)
 for _,v in ipairs(Lighting:GetChildren()) do
 	if v:IsA("BloomEffect")
 	or v:IsA("SunRaysEffect")
@@ -22,7 +21,7 @@ for _,v in ipairs(Lighting:GetChildren()) do
 end
 
 ------------------------------------------------
--- GIẢM BIỂN / NƯỚC (SEA 3)
+-- GIẢM BIỂN / NƯỚC (SEA 1-3)
 ------------------------------------------------
 if Terrain then
 	Terrain.WaterWaveSize = 0
@@ -32,25 +31,21 @@ if Terrain then
 end
 
 ------------------------------------------------
--- CHỈ XÁM MAP (KHÔNG ĐỤNG SKYBOX)
+-- FIX LỖI XOAY NGƯỜI SAU KHI DÙNG SKILL
 ------------------------------------------------
-local function GrayMap(obj)
-	for _,v in ipairs(obj:GetDescendants()) do
-		if v:IsA("BasePart") then
-			-- Bỏ qua part của nhân vật
-			if not v:IsDescendantOf(Players) then
-				pcall(function()
-					v.Material = Enum.Material.Plastic
-					v.Color = Color3.fromRGB(150,150,150)
-					v.Reflectance = 0
-				end)
-			end
+local function FixRotation(char)
+	for _,v in ipairs(char:GetDescendants()) do
+		if v:IsA("BodyGyro")
+		or v:IsA("BodyAngularVelocity")
+		or v:IsA("AlignOrientation")
+		or v:IsA("AngularVelocity") then
+			pcall(function() v:Destroy() end)
 		end
 	end
 end
 
 ------------------------------------------------
--- XOÁ HIỆU ỨNG SKILL DƯ THỪA
+-- XOÁ HIỆU ỨNG SKILL DƯ THỪA (CONTROL, DRAGON, ETC)
 ------------------------------------------------
 local function ClearSkillEffects(obj)
 	for _,v in ipairs(obj:GetDescendants()) do
@@ -63,35 +58,54 @@ local function ClearSkillEffects(obj)
 		or v:IsA("PointLight")
 		or v:IsA("SurfaceLight")
 		or v:IsA("SpotLight") then
-			pcall(function()
-				v.Enabled = false
-				v:Destroy()
-			end)
+			pcall(function() v:Destroy() end)
 		end
 	end
 end
 
 ------------------------------------------------
--- ÁP DỤNG
+-- XOÁ CÂY CỐI + PROP DƯ (SEA 1-3)
 ------------------------------------------------
-GrayMap(workspace)
-ClearSkillEffects(workspace)
+for _,v in ipairs(workspace:GetDescendants()) do
+	if v:IsA("Model") then
+		local n = v.Name:lower()
+
+		-- Cây, lá, cỏ
+		if n:find("tree")
+		or n:find("bush")
+		or n:find("leaf")
+		or n:find("grass")
+		or n:find("plant") then
+			pcall(function() v:Destroy() end)
+		end
+
+		-- Nhà / prop nhỏ không có NPC
+		if not v:FindFirstChildOfClass("Humanoid") then
+			if #v:GetDescendants() <= 15 then
+				pcall(function() v:Destroy() end)
+			end
+		end
+	end
+end
 
 ------------------------------------------------
 -- PLAYER (KHÔNG XOÁ NHÂN VẬT)
 ------------------------------------------------
 for _,plr in ipairs(Players:GetPlayers()) do
 	if plr.Character then
+		FixRotation(plr.Character)
 		ClearSkillEffects(plr.Character)
 	end
+
 	plr.CharacterAdded:Connect(function(char)
 		task.wait(1)
+		FixRotation(char)
 		ClearSkillEffects(char)
 	end)
 end
 
 ------------------------------------------------
--- XOÁ EFFECT MỚI SINH RA (SPAM SKILL)
+-- TỰ XOÁ EFFECT + LỖI XOAY SINH RA KHI SPAM SKILL
 ------------------------------------------------
 workspace.DescendantAdded:Connect(function(v)
 	if v:IsA("ParticleEmitter")
@@ -102,10 +116,14 @@ workspace.DescendantAdded:Connect(function(v)
 	or v:IsA("Sparkles")
 	or v:IsA("PointLight")
 	or v:IsA("SurfaceLight")
-	or v:IsA("SpotLight") then
+	or v:IsA("SpotLight")
+	or v:IsA("BodyGyro")
+	or v:IsA("AlignOrientation")
+	or v:IsA("AngularVelocity")
+	or v:IsA("BodyAngularVelocity") then
 		task.wait()
 		pcall(function() v:Destroy() end)
 	end
 end)
 
-print("✅ FixLag Sea 3 | Chỉ xám mặt đất | Giữ bầu trời | Xoá effect dư thừa")
+print("✅ FixLag Sea 1-3 ON | Fix xoay | Xoá cây + effect dư")
