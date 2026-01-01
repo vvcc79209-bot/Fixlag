@@ -1,29 +1,28 @@
--- BLOX FRUITS FIX LAG SAFE SEA 1-3
--- KHÔNG MẤT VÕ | KHÔNG XÁM MAP | FIX XOAY | XÁM EFFECT
+-- BLOX FRUITS FIX LAG SEA 3
+-- Chỉ xám mặt đất | Giữ bầu trời | Xoá effect dư thừa | Không lỗi
 
 local Players = game:GetService("Players")
 local Lighting = game:GetService("Lighting")
 local Terrain = workspace:FindFirstChildOfClass("Terrain")
 
 ------------------------------------------------
--- LIGHTING (KHÔNG ĐỤNG BẦU TRỜI)
+-- KHÔNG ĐỤNG SKY / LIGHTING MÀU
 ------------------------------------------------
-pcall(function()
-	Lighting.GlobalShadows = false
-	Lighting.FogEnd = 9e9
+Lighting.GlobalShadows = false
+Lighting.FogEnd = 9e9
 
-	for _,v in ipairs(Lighting:GetChildren()) do
-		if v:IsA("BloomEffect")
-		or v:IsA("SunRaysEffect")
-		or v:IsA("BlurEffect")
-		or v:IsA("DepthOfFieldEffect") then
-			v:Destroy()
-		end
+-- Xoá effect nặng trong Lighting (KHÔNG đổi màu)
+for _,v in ipairs(Lighting:GetChildren()) do
+	if v:IsA("BloomEffect")
+	or v:IsA("SunRaysEffect")
+	or v:IsA("BlurEffect")
+	or v:IsA("DepthOfFieldEffect") then
+		v:Destroy()
 	end
-end)
+end
 
 ------------------------------------------------
--- GIẢM BIỂN
+-- GIẢM BIỂN / NƯỚC (SEA 3)
 ------------------------------------------------
 if Terrain then
 	Terrain.WaterWaveSize = 0
@@ -33,84 +32,80 @@ if Terrain then
 end
 
 ------------------------------------------------
--- FIX XOAY (KHÔNG ĐỤNG TOOL)
+-- CHỈ XÁM MAP (KHÔNG ĐỤNG SKYBOX)
 ------------------------------------------------
-local function FixRotation(char)
-	for _,v in ipairs(char:GetDescendants()) do
-		if v:IsA("BodyGyro")
-		or v:IsA("BodyAngularVelocity")
-		or v:IsA("AlignOrientation")
-		or v:IsA("AngularVelocity") then
-			v:Destroy()
+local function GrayMap(obj)
+	for _,v in ipairs(obj:GetDescendants()) do
+		if v:IsA("BasePart") then
+			-- Bỏ qua part của nhân vật
+			if not v:IsDescendantOf(Players) then
+				pcall(function()
+					v.Material = Enum.Material.Plastic
+					v.Color = Color3.fromRGB(150,150,150)
+					v.Reflectance = 0
+				end)
+			end
 		end
 	end
 end
 
 ------------------------------------------------
--- XÁM EFFECT SKILL (KHÔNG XOÁ)
+-- XOÁ HIỆU ỨNG SKILL DƯ THỪA
 ------------------------------------------------
-local function GrayEffect(obj)
+local function ClearSkillEffects(obj)
 	for _,v in ipairs(obj:GetDescendants()) do
 		if v:IsA("ParticleEmitter")
 		or v:IsA("Trail")
-		or v:IsA("Beam") then
-			v.Color = ColorSequence.new(Color3.fromRGB(160,160,160))
-			v.LightEmission = 0
-			v.LightInfluence = 0
-		end
-
-		if v:IsA("PointLight")
+		or v:IsA("Beam")
+		or v:IsA("Fire")
+		or v:IsA("Smoke")
+		or v:IsA("Sparkles")
+		or v:IsA("PointLight")
 		or v:IsA("SurfaceLight")
 		or v:IsA("SpotLight") then
-			v.Brightness = 0
+			pcall(function()
+				v.Enabled = false
+				v:Destroy()
+			end)
 		end
 	end
 end
 
 ------------------------------------------------
--- XOÁ CÂY CỐI ĐÚNG TÊN (KHÔNG XOÁ MAP)
+-- ÁP DỤNG
 ------------------------------------------------
-for _,v in ipairs(workspace:GetDescendants()) do
-	if v:IsA("Model") then
-		local n = v.Name:lower()
-		if n:find("tree")
-		or n:find("bush")
-		or n:find("leaf")
-		or n:find("grass")
-		or n:find("plant") then
-			v:Destroy()
-		end
-	end
-end
+GrayMap(workspace)
+ClearSkillEffects(workspace)
 
 ------------------------------------------------
--- PLAYER
+-- PLAYER (KHÔNG XOÁ NHÂN VẬT)
 ------------------------------------------------
 for _,plr in ipairs(Players:GetPlayers()) do
 	if plr.Character then
-		FixRotation(plr.Character)
-		GrayEffect(plr.Character)
+		ClearSkillEffects(plr.Character)
 	end
-
 	plr.CharacterAdded:Connect(function(char)
 		task.wait(1)
-		FixRotation(char)
-		GrayEffect(char)
+		ClearSkillEffects(char)
 	end)
 end
 
 ------------------------------------------------
--- EFFECT PHÁT SINH (CONTROL / DRAGON)
+-- XOÁ EFFECT MỚI SINH RA (SPAM SKILL)
 ------------------------------------------------
 workspace.DescendantAdded:Connect(function(v)
 	if v:IsA("ParticleEmitter")
 	or v:IsA("Trail")
-	or v:IsA("Beam") then
+	or v:IsA("Beam")
+	or v:IsA("Fire")
+	or v:IsA("Smoke")
+	or v:IsA("Sparkles")
+	or v:IsA("PointLight")
+	or v:IsA("SurfaceLight")
+	or v:IsA("SpotLight") then
 		task.wait()
-		v.Color = ColorSequence.new(Color3.fromRGB(160,160,160))
-		v.LightEmission = 0
-		v.LightInfluence = 0
+		pcall(function() v:Destroy() end)
 	end
 end)
 
-print("✅ FIX LAG SAFE ON | KHÔNG MẤT VÕ | KHÔNG XÁM MAP")
+print("✅ FixLag Sea 3 | Chỉ xám mặt đất | Giữ bầu trời | Xoá effect dư thừa")
