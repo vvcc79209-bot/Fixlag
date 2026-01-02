@@ -1,0 +1,117 @@
+-- Script Fix Lag Blox Fruits - Mặt đất xám, biển xám, xóa thừa, effects xám, không ảnh hưởng nhân vật
+-- Paste vào executor như Synapse X, Krnl, Fluxus,...
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local Workspace = game:GetService("Workspace")
+local Lighting = game:GetService("Lighting")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+
+-- Settings
+local GRAY_COLOR = Color3.fromRGB(128, 128, 128) -- Màu xám
+local LOW_QUALITY = true
+local REMOVE_CLUTTER = true -- Xóa cây cối, nhà thừa
+local GRAY_EFFECTS = true -- Làm effects skill xám
+local LOOP_INTERVAL = 0.5 -- Giây loop một lần
+
+-- Whitelist: Không chạm vào nhân vật
+local function isCharacter(part)
+    local parent = part.Parent
+    return parent:FindFirstChildOfClass("Humanoid") ~= nil or parent.Name == LocalPlayer.Name or parent.Parent.Name == LocalPlayer.Name
+end
+
+-- Function chính để optimize
+local function optimize()
+    for _, obj in pairs(Workspace:GetDescendants()) do
+        if obj:IsA("BasePart") and not isCharacter(obj) then
+            -- Làm tất cả parts không phải nhân vật thành xám (ground, houses, etc.)
+            obj.Color = GRAY_COLOR
+            obj.Material = Enum.Material.Plastic
+            obj.Reflectance = 0
+            obj.Transparency = 0
+
+            -- Xóa cụ thể cây cối, bush, rock, house thừa
+            local name = obj.Name:lower()
+            if REMOVE_CLUTTER and (string.find(name, "tree") or string.find(name, "bush") or string.find(name, "rock") or string.find(name, "grass") or string.find(name, "foliage") or string.find(name, "house") or string.find(name, "building")) then
+                obj:Destroy()
+            end
+
+            -- Đặc biệt cho biển (Sea)
+            if obj.Parent.Name == "Sea" or string.find(name, "water") or obj.Material == Enum.Material.Water then
+                obj.Color = GRAY_COLOR
+                obj.Transparency = 0.2 -- Hơi trong để nhìn biển xám
+            end
+        elseif obj:IsA("Decal") or obj:IsA("Texture") then
+            obj.Transparency = 1
+        elseif GRAY_EFFECTS and (obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Beam") or obj:IsA("Fire") or obj:IsA("Smoke") or obj:IsA("Sparkles")) then
+            -- Làm effects skill (Control, Dragon, etc.) xám hoặc disable
+            if obj:IsA("ParticleEmitter") then
+                obj.Enabled = false
+                obj.Color = ColorSequence.new(GRAY_COLOR)
+            elseif obj:IsA("Trail") or obj:IsA("Beam") then
+                obj.Color = ColorSequence.new(GRAY_COLOR)
+                obj.Transparency = NumberSequence.new(1)
+            elseif obj:IsA("Fire") or obj:IsA("Smoke") then
+                obj.Enabled = false
+            else
+                obj:Destroy()
+            end
+        elseif obj:IsA("Explosion") then
+            obj.BlastRadius = 0
+            obj.BlastPressure = 0
+        elseif obj:IsA("MeshPart") and not isCharacter(obj) then
+            obj.Color = GRAY_COLOR
+            obj.Material = Enum.Material.Plastic
+            obj.TextureID = ""
+        elseif obj:IsA("SpecialMesh") then
+            obj.MeshId = ""
+            obj.TextureId = ""
+        end
+    end
+end
+
+-- Optimize Lighting và Settings
+Lighting.GlobalShadows = false
+Lighting.FogEnd = math.huge
+Lighting.Brightness = 2
+settings().Rendering.QualityLevel = Enum.SavedQualitySetting.Level01
+
+-- Terrain Water xám/low
+local terrain = Workspace.Terrain
+terrain.WaterWaveSize = 0
+terrain.WaterWaveSpeed = 0
+terrain.WaterReflectance = 0
+terrain.WaterTransparency = 0.3
+
+-- FPS Unlock (nếu executor hỗ trợ)
+if setfpscap then
+    setfpscap(144) -- Hoặc cao hơn nếu máy mạnh
+end
+
+-- Chạy optimize lần đầu
+optimize()
+
+-- Loop liên tục để xử lý objects mới (effects skill, spawn mới)
+spawn(function()
+    while true do
+        wait(LOOP_INTERVAL)
+        optimize()
+    end
+end)
+
+-- Tối ưu thêm: Remove post effects
+for _, effect in pairs(Lighting:GetChildren()) do
+    if effect:IsA("PostEffect") then
+        effect.Enabled = false
+    end
+end
+
+-- Notify
+game.StarterGui:SetCore("SendNotification", {
+    Title = "Fix Lag Blox Fruits";
+    Text = "Đã kích hoạt! Mặt đất & biển xám, xóa thừa, effects xám. FPS tăng!";
+    Duration = 5;
+})
+
+print("Script Fix Lag Blox Fruits loaded thành công!")
