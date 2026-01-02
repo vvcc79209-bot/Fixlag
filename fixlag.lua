@@ -83,3 +83,67 @@ end)
 settings().Rendering.QualityLevel = 1
 
 print("✅ FIX LAG OK: KEEP CHARACTER | HIDE DECOR")
+-- BLOX FRUITS FIX LAG - GRAY MODE (NO DELETE MAP)
+
+local Lighting = game:GetService("Lighting")
+local Terrain = workspace.Terrain
+
+-- ===== LIGHTING (TRỜI XÁM) =====
+Lighting.GlobalShadows = false
+Lighting.FogEnd = 1e10
+Lighting.Brightness = 1
+Lighting.Ambient = Color3.fromRGB(140,140,140)
+Lighting.OutdoorAmbient = Color3.fromRGB(140,140,140)
+
+for _,v in ipairs(Lighting:GetChildren()) do
+    if v:IsA("Sky")
+    or v:IsA("BloomEffect")
+    or v:IsA("SunRaysEffect")
+    or v:IsA("BlurEffect")
+    or v:IsA("ColorCorrectionEffect") then
+        v:Destroy()
+    end
+end
+
+-- ===== BIỂN XÁM =====
+Terrain.WaterColor = Color3.fromRGB(140,140,140)
+Terrain.WaterTransparency = 0
+Terrain.WaterReflectance = 0
+
+-- ===== FIX MÀU + TẮT EFFECT =====
+local function Fix(v)
+    -- ĐỔI MÀU (KHÔNG XOÁ)
+    if v:IsA("BasePart") then
+        v.Material = Enum.Material.SmoothPlastic
+        v.Color = Color3.fromRGB(140,140,140)
+        v.CastShadow = false
+        v.Reflectance = 0
+    end
+
+    -- TẮT HIỆU ỨNG SKILL
+    if v:IsA("ParticleEmitter")
+    or v:IsA("Trail")
+    or v:IsA("Beam")
+    or v:IsA("Explosion")
+    or v:IsA("Fire")
+    or v:IsA("Smoke")
+    or v:IsA("Sparkles") then
+        v.Enabled = false
+    end
+end
+
+-- ÁP DỤNG CHO MAP HIỆN TẠI
+for _,v in ipairs(workspace:GetDescendants()) do
+    Fix(v)
+end
+
+-- CHẶN EFFECT MỚI SPAWN (CONTROL / DRAGON / ALL)
+workspace.DescendantAdded:Connect(function(v)
+    task.wait()
+    Fix(v)
+end)
+
+-- FPS BOOST
+settings().Rendering.QualityLevel = 1
+
+print("✅ FIX LAG BLOX FRUITS - KEEP MAP ENABLED")
