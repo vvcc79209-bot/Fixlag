@@ -1,0 +1,87 @@
+-- BLOX FRUITS FULL FIX LAG - GRAY MODE
+-- Made for FPS boost
+
+local Players = game:GetService("Players")
+local Lighting = game:GetService("Lighting")
+local Terrain = workspace:FindFirstChildOfClass("Terrain")
+
+-- ===== SKY & LIGHTING =====
+Lighting.Brightness = 1
+Lighting.GlobalShadows = false
+Lighting.FogEnd = 1e9
+Lighting.OutdoorAmbient = Color3.fromRGB(120,120,120)
+Lighting.Ambient = Color3.fromRGB(120,120,120)
+
+-- Remove sky
+for _,v in pairs(Lighting:GetChildren()) do
+    if v:IsA("Sky") or v:IsA("BloomEffect") or v:IsA("SunRaysEffect") 
+    or v:IsA("BlurEffect") or v:IsA("ColorCorrectionEffect") then
+        v:Destroy()
+    end
+end
+
+-- ===== TERRAIN (GROUND + SEA) =====
+if Terrain then
+    Terrain.WaterColor = Color3.fromRGB(120,120,120)
+    Terrain.WaterTransparency = 0
+    Terrain.WaterReflectance = 0
+end
+
+-- ===== REMOVE MAP OBJECTS =====
+for _,v in pairs(workspace:GetDescendants()) do
+    -- Xoá cây, nhà, decor
+    if v:IsA("Model") or v:IsA("Folder") then
+        local name = string.lower(v.Name)
+        if string.find(name,"tree") or string.find(name,"house") 
+        or string.find(name,"bush") or string.find(name,"rock")
+        or string.find(name,"decor") or string.find(name,"building") then
+            pcall(function() v:Destroy() end)
+        end
+    end
+
+    -- FIX PARTS
+    if v:IsA("BasePart") then
+        v.Material = Enum.Material.SmoothPlastic
+        v.Color = Color3.fromRGB(130,130,130)
+        v.Reflectance = 0
+        v.CastShadow = false
+    end
+
+    -- REMOVE EFFECTS
+    if v:IsA("ParticleEmitter")
+    or v:IsA("Trail")
+    or v:IsA("Beam")
+    or v:IsA("Fire")
+    or v:IsA("Smoke")
+    or v:IsA("Sparkles") then
+        v.Enabled = false
+        pcall(function() v:Destroy() end)
+    end
+
+    -- REMOVE SKILL EFFECTS
+    if v:IsA("Explosion") or v:IsA("Highlight") then
+        pcall(function() v:Destroy() end)
+    end
+end
+
+-- ===== DISABLE SKILL EFFECTS (CONTROL / DRAGON / ALL) =====
+game.DescendantAdded:Connect(function(v)
+    if v:IsA("ParticleEmitter")
+    or v:IsA("Trail")
+    or v:IsA("Beam")
+    or v:IsA("Explosion") then
+        task.wait()
+        pcall(function() v:Destroy() end)
+    end
+
+    if v:IsA("BasePart") then
+        v.Material = Enum.Material.SmoothPlastic
+        v.Color = Color3.fromRGB(130,130,130)
+        v.CastShadow = false
+    end
+end)
+
+-- ===== FPS BOOST =====
+settings().Rendering.QualityLevel = 1
+
+print("✅ BLOX FRUITS FIX LAG GRAY MODE ENABLED")
