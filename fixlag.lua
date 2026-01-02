@@ -1,6 +1,6 @@
--- BLOX FRUITS FIX LAG - FULL & SAFE VERSION
+-- BLOX FRUITS FIX LAG - FINAL STABLE
 -- FIX SWORD SPIN BUG
--- FIX INVENTORY BUG
+-- FIX SEA 2 GROUND BUG
 
 local Players = game:GetService("Players")
 local Lighting = game:GetService("Lighting")
@@ -43,20 +43,47 @@ local function IsNPC(obj)
        and not Players:GetPlayerFromCharacter(m)
 end
 
-local function IsTool(obj)
-    return obj:FindFirstAncestorOfClass("Tool") ~= nil
+local function IsGround(part)
+    -- GIỮ TẤT CẢ TERRAIN
+    if part:IsDescendantOf(Terrain) then
+        return true
+    end
+    -- GIỮ PART NỀN THẬT (SEA 2)
+    if part:IsA("BasePart") and part.Anchored and part.CanCollide then
+        return true
+    end
+    return false
 end
 
-local function IsGround(part)
-    return part:IsA("BasePart") and part.Size.Y >= 8
+--------------------------------------------------
+-- FIX SWORD SPIN (CỐT LÕI)
+--------------------------------------------------
+local function FixSwordSpin(v)
+    if v:IsA("AlignOrientation") or v:IsA("BodyGyro") then
+        pcall(function()
+            v.Enabled = false
+            v.MaxTorque = Vector3.zero
+            v.Responsiveness = 0
+        end)
+    end
+
+    if v:IsA("AngularVelocity") or v:IsA("BodyAngularVelocity") then
+        pcall(function()
+            v.AngularVelocity = Vector3.zero
+            v.MaxTorque = Vector3.zero
+        end)
+    end
 end
 
 --------------------------------------------------
 -- CORE FIX
 --------------------------------------------------
 local function Fix(v)
-    -- ❌ KHÔNG ĐỤNG TOOL / INVENTORY
-    if IsTool(v) then return end
+    -- KHÔNG ĐỤNG PLAYER
+    if IsCharacter(v) then
+        FixSwordSpin(v)
+        return
+    end
 
     -- NPC MÀU XÁM
     if IsNPC(v) and v:IsA("BasePart") then
@@ -66,10 +93,7 @@ local function Fix(v)
         return
     end
 
-    -- PLAYER GIỮ NGUYÊN
-    if IsCharacter(v) then return end
-
-    -- NỀN ĐẤT
+    -- GIỮ NỀN (SEA 1 + SEA 2)
     if v:IsA("BasePart") and IsGround(v) then
         v.Material = Enum.Material.SmoothPlastic
         v.Color = Color3.fromRGB(150,150,150)
@@ -94,29 +118,16 @@ local function Fix(v)
     or v:IsA("Highlight")
     or v:IsA("PointLight")
     or v:IsA("SurfaceLight")
-    or v:IsA("SpotLight") then
+    or v:IsA("SpotLight")
+    or v:IsA("Trail") then
         pcall(function()
             v.Enabled = false
             v:Destroy()
         end)
     end
 
-    -- 🔧 FIX KIẾM XOAY (CỰC QUAN TRỌNG)
-    if v:IsA("Trail") then
-        pcall(function()
-            v.Enabled = false
-            v.Lifetime = 0
-            v:Destroy()
-        end)
-    end
-
-    if v:IsA("AngularVelocity")
-    or v:IsA("BodyAngularVelocity")
-    or v:IsA("Motor6D") then
-        pcall(function()
-            v:Destroy()
-        end)
-    end
+    -- FIX XOAY LIÊN TỤC
+    FixSwordSpin(v)
 end
 
 --------------------------------------------------
@@ -127,16 +138,13 @@ for _,v in ipairs(workspace:GetDescendants()) do
 end
 
 --------------------------------------------------
--- CHẶN EFFECT MỚI (DRAGON / SKULL GUITAR / ALL)
+-- CHẶN OBJECT / SKILL MỚI
 --------------------------------------------------
 workspace.DescendantAdded:Connect(function(v)
     task.wait()
     Fix(v)
 end)
 
---------------------------------------------------
--- FPS BOOST
---------------------------------------------------
 settings().Rendering.QualityLevel = 1
 
-print("✅ FIX LAG FULL ENABLED | SWORD BUG FIXED | INVENTORY OK")
+print("✅ FIX LAG OK | SWORD BUG FIXED | SEA 2 SAFE")
