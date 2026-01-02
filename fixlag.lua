@@ -1,69 +1,151 @@
--- BLOX FRUITS FIXLAG + FIX SPIN Z (DELTA SAFE)
+-- BLOX FRUITS FIX LAG - FINAL STABLE
+-- FIX SWORD SPIN BUG
+-- FIX SEA 2 GROUND BUG
 
 local Players = game:GetService("Players")
 local Lighting = game:GetService("Lighting")
-local player = Players.LocalPlayer
+local Terrain = workspace.Terrain
+local RunService = game:GetService("RunService")
 
 --------------------------------------------------
--- 1. FIX LAG LIGHTING (KHÔNG ĐỘNG SUN)
+-- LIGHTING (GIỮ TRỜI / MẶT TRỜI)
 --------------------------------------------------
-pcall(function()
-    Lighting.GlobalShadows = false
-    Lighting.FogEnd = 9e9
-    Lighting.Brightness = 1
-    Lighting.Ambient = Color3.fromRGB(140,140,140)
-    Lighting.OutdoorAmbient = Color3.fromRGB(140,140,140)
-end)
+Lighting.GlobalShadows = false
+Lighting.FogEnd = 1e10
 
---------------------------------------------------
--- 2. BIỂN MÀU XÁM (AN TOÀN)
---------------------------------------------------
-pcall(function()
-    local t = workspace:FindFirstChildOfClass("Terrain")
-    if t then
-        t.WaterColor = Color3.fromRGB(120,120,120)
-        t.WaterWaveSize = 0
-        t.WaterWaveSpeed = 0
-    end
-end)
-
---------------------------------------------------
--- 3. XOÁ CÂY / NHÀ / DECOR (KHÔNG ĐỤNG ĐẤT)
---------------------------------------------------
-for _,m in pairs(workspace:GetChildren()) do
-    if m:IsA("Model") then
-        local n = m.Name:lower()
-        if n:find("tree") or n:find("house") or n:find("decor") then
-            pcall(function() m:Destroy() end)
-        end
+for _,v in ipairs(Lighting:GetChildren()) do
+    if v:IsA("BloomEffect")
+    or v:IsA("SunRaysEffect")
+    or v:IsA("BlurEffect")
+    or v:IsA("ColorCorrectionEffect") then
+        v:Destroy()
     end
 end
 
 --------------------------------------------------
--- 4. GIẢM EFFECT SKILL (DELTA SAFE)
+-- SEA (XÁM)
 --------------------------------------------------
-for _,v in pairs(workspace:GetDescendants()) do
+Terrain.WaterColor = Color3.fromRGB(150,150,150)
+Terrain.WaterTransparency = 0
+Terrain.WaterReflectance = 0
+
+--------------------------------------------------
+-- CHECK FUNCTIONS
+--------------------------------------------------
+local function IsCharacter(obj)
+    local m = obj:FindFirstAncestorOfClass("Model")
+    return m and m:FindFirstChildOfClass("Humanoid")
+end
+
+local function IsNPC(obj)
+    local m = obj:FindFirstAncestorOfClass("Model")
+    return m and m:FindFirstChildOfClass("Humanoid")
+       and not Players:GetPlayerFromCharacter(m)
+end
+
+local function IsGround(part)
+    -- GIỮ TẤT CẢ TERRAIN
+    if part:IsDescendantOf(Terrain) then
+        return true
+    end
+    -- GIỮ PART NỀN THẬT (SEA 2)
+    if part:IsA("BasePart") and part.Anchored and part.CanCollide then
+        return true
+    end
+    return false
+end
+
+--------------------------------------------------
+-- FIX SWORD SPIN (CỐT LÕI)
+--------------------------------------------------
+local function FixSwordSpin(v)
+    if v:IsA("AlignOrientation") or v:IsA("BodyGyro") then
+        pcall(function()
+            v.Enabled = false
+            v.MaxTorque = Vector3.zero
+            v.Responsiveness = 0
+        end)
+    end
+
+    if v:IsA("AngularVelocity") or v:IsA("BodyAngularVelocity") then
+        pcall(function()
+            v.AngularVelocity = Vector3.zero
+            v.MaxTorque = Vector3.zero
+        end)
+    end
+end
+
+--------------------------------------------------
+-- CORE FIX
+--------------------------------------------------
+local function Fix(v)
+    -- KHÔNG ĐỤNG PLAYER
+    if IsCharacter(v) then
+        FixSwordSpin(v)
+        return
+    end
+
+    -- NPC MÀU XÁM
+    if IsNPC(v) and v:IsA("BasePart") then
+        v.Material = Enum.Material.SmoothPlastic
+        v.Color = Color3.fromRGB(150,150,150)
+        v.CastShadow = false
+        return
+    end
+
+    -- GIỮ NỀN (SEA 1 + SEA 2)
+    if v:IsA("BasePart") and IsGround(v) then
+        v.Material = Enum.Material.SmoothPlastic
+        v.Color = Color3.fromRGB(150,150,150)
+        v.CastShadow = false
+        return
+    end
+
+    -- CÂY / NHÀ / DECOR
+    if v:IsA("BasePart") then
+        v.Transparency = 1
+        v.CanCollide = false
+        v.CastShadow = false
+    end
+
+    -- XOÁ HIỆU ỨNG SKILL
     if v:IsA("ParticleEmitter")
-    or v:IsA("Trail")
-    or v:IsA("Beam") then
-        v.Enabled = false
+    or v:IsA("Beam")
+    or v:IsA("Explosion")
+    or v:IsA("Fire")
+    or v:IsA("Smoke")
+    or v:IsA("Sparkles")
+    or v:IsA("Highlight")
+    or v:IsA("PointLight")
+    or v:IsA("SurfaceLight")
+    or v:IsA("SpotLight")
+    or v:IsA("Trail") then
+        pcall(function()
+            v.Enabled = false
+            v:Destroy()
+        end)
     end
+
+    -- FIX XOAY LIÊN TỤC
+    FixSwordSpin(v)
 end
 
 --------------------------------------------------
--- 5. NPC MÀU XÁM
+-- APPLY BAN ĐẦU
 --------------------------------------------------
-for _,npc in pairs(workspace:GetChildren()) do
-    if npc:FindFirstChildOfClass("Humanoid")
-    and not Players:GetPlayerFromCharacter(npc) then
-        for _,p in pairs(npc:GetDescendants()) do
-            if p:IsA("BasePart") then
-                p.Color = Color3.fromRGB(150,150,150)
-                p.Material = Enum.Material.Plastic
-            end
-        end
-    end
+for _,v in ipairs(workspace:GetDescendants()) do
+    Fix(v)
 end
+
+--------------------------------------------------
+-- CHẶN OBJECT / SKILL MỚI
+--------------------------------------------------
+workspace.DescendantAdded:Connect(function(v)
+    task.wait()
+    Fix(v)
+end)
+
+settings().Rendering.QualityLevel = 1
 
 --------------------------------------------------
 -- 6. FIX XOAY KIẾM Z (DELTA – GIẢM MẠNH)
@@ -81,15 +163,4 @@ local function FixSpinOnce()
         end
     end
 end
-
--- chỉ chạy khi cầm tool (an toàn cho Delta)
-player.CharacterAdded:Connect(function(char)
-    char.ChildAdded:Connect(function(obj)
-        if obj:IsA("Tool") then
-            task.delay(0.3, FixSpinOnce)
-            task.delay(1, FixSpinOnce)
-        end
-    end)
-end)
-
-print("✅ DELTA FIXLAG + FIX SPIN Z LOADED")
+print("✅ FIX LAG OK | SWORD BUG FIXED | SEA 2 SAFE")
