@@ -147,4 +147,52 @@ end)
 
 settings().Rendering.QualityLevel = 1
 
-print("✅ FIX LAG OK | SWORD BUG FIXED | SEA 2 SAFE")
+print("✅ FIX LAG OK | SWORD BUG FIXED | SEA 2 SAFE")--------------------------------------------------
+-- FIX XOAY CHIÊU Z KIẾM (DELTA – CỐT LÕI)
+--------------------------------------------------
+local LocalPlayer = Players.LocalPlayer
+
+local function HardStopSpin()
+    local char = LocalPlayer.Character
+    if not char then return end
+
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hum or not hrp then return end
+
+    -- 1. DỪNG TOÀN BỘ LỰC XOAY
+    for _,v in ipairs(hrp:GetChildren()) do
+        if v:IsA("BodyGyro")
+        or v:IsA("BodyAngularVelocity")
+        or v:IsA("AngularVelocity")
+        or v:IsA("AlignOrientation") then
+            pcall(function() v:Destroy() end)
+        end
+    end
+
+    -- 2. RESET XOAY GỐC
+    hrp.AssemblyAngularVelocity = Vector3.zero
+    hrp.RotVelocity = Vector3.zero
+
+    -- 3. ÉP HUMANOID TRỞ LẠI TRẠNG THÁI BÌNH THƯỜNG
+    hum:ChangeState(Enum.HumanoidStateType.Running)
+end
+
+-- 🔒 FIX KHI DÙNG TOOL (KIẾM)
+LocalPlayer.CharacterAdded:Connect(function(char)
+    char.ChildAdded:Connect(function(obj)
+        if obj:IsA("Tool") then
+            -- Sau khi nhấn Z thường 0.3–1s mới bug
+            task.delay(0.35, HardStopSpin)
+            task.delay(0.8, HardStopSpin)
+            task.delay(1.4, HardStopSpin)
+        end
+    end)
+end)
+
+-- 🔒 FIX KHI TRẠNG THÁI NHÂN VẬT BỊ KẸT XOAY
+task.spawn(function()
+    while task.wait(1.2) do
+        pcall(HardStopSpin)
+    end
+end)
