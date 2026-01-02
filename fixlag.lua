@@ -147,20 +147,4 @@ end)
 
 settings().Rendering.QualityLevel = 1
 
---------------------------------------------------
--- 6. FIX XOAY KIẾM Z (DELTA – GIẢM MẠNH)
---------------------------------------------------
-local function FixSpinOnce()
-    local char = player.Character
-    if not char then return end
-    local hrp = char:FindFirstChild("HumanoidRootPart")
-    if not hrp then return end
-
-    for _,v in pairs(hrp:GetChildren()) do
-        if v:IsA("BodyGyro")
-        or v:IsA("BodyAngularVelocity") then
-            v:Destroy()
-        end
-    end
-end
 print("✅ FIX LAG OK | SWORD BUG FIXED | SEA 2 SAFE")
