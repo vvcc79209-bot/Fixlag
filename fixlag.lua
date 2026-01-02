@@ -1,23 +1,18 @@
--- BLOX FRUITS FIX LAG - FULL CUSTOM
--- HIDE TREE / HOUSE / DECOR
--- KEEP GROUND
--- GRAY GROUND + SEA
--- REMOVE ALL SKILL EFFECTS
+-- BLOX FRUITS FIX LAG - FULL & SAFE VERSION
 -- FIX SWORD SPIN BUG
--- NPC GRAY
--- KEEP SKY / SUN NORMAL
+-- FIX INVENTORY BUG
 
 local Players = game:GetService("Players")
 local Lighting = game:GetService("Lighting")
 local Terrain = workspace.Terrain
+local RunService = game:GetService("RunService")
 
--------------------------------------------------
--- LIGHTING (GIỮ TRỜI / MẶT TRỜI BÌNH THƯỜNG)
--------------------------------------------------
+--------------------------------------------------
+-- LIGHTING (GIỮ TRỜI / MẶT TRỜI)
+--------------------------------------------------
 Lighting.GlobalShadows = false
 Lighting.FogEnd = 1e10
 
--- ❌ KHÔNG xoá Sky
 for _,v in ipairs(Lighting:GetChildren()) do
     if v:IsA("BloomEffect")
     or v:IsA("SunRaysEffect")
@@ -27,16 +22,16 @@ for _,v in ipairs(Lighting:GetChildren()) do
     end
 end
 
--------------------------------------------------
+--------------------------------------------------
 -- SEA (XÁM)
--------------------------------------------------
-Terrain.WaterColor = Color3.fromRGB(145,145,145)
+--------------------------------------------------
+Terrain.WaterColor = Color3.fromRGB(150,150,150)
 Terrain.WaterTransparency = 0
 Terrain.WaterReflectance = 0
 
--------------------------------------------------
+--------------------------------------------------
 -- CHECK FUNCTIONS
--------------------------------------------------
+--------------------------------------------------
 local function IsCharacter(obj)
     local m = obj:FindFirstAncestorOfClass("Model")
     return m and m:FindFirstChildOfClass("Humanoid")
@@ -44,46 +39,53 @@ end
 
 local function IsNPC(obj)
     local m = obj:FindFirstAncestorOfClass("Model")
-    return m and m:FindFirstChildOfClass("Humanoid") and not Players:GetPlayerFromCharacter(m)
+    return m and m:FindFirstChildOfClass("Humanoid")
+       and not Players:GetPlayerFromCharacter(m)
+end
+
+local function IsTool(obj)
+    return obj:FindFirstAncestorOfClass("Tool") ~= nil
 end
 
 local function IsGround(part)
     return part:IsA("BasePart") and part.Size.Y >= 8
 end
 
--------------------------------------------------
+--------------------------------------------------
 -- CORE FIX
--------------------------------------------------
+--------------------------------------------------
 local function Fix(v)
-    -- ===== NPC MÀU XÁM =====
+    -- ❌ KHÔNG ĐỤNG TOOL / INVENTORY
+    if IsTool(v) then return end
+
+    -- NPC MÀU XÁM
     if IsNPC(v) and v:IsA("BasePart") then
         v.Material = Enum.Material.SmoothPlastic
-        v.Color = Color3.fromRGB(145,145,145)
+        v.Color = Color3.fromRGB(150,150,150)
         v.CastShadow = false
         return
     end
 
-    -- ===== GIỮ PLAYER =====
+    -- PLAYER GIỮ NGUYÊN
     if IsCharacter(v) then return end
 
-    -- ===== NỀN ĐẤT =====
+    -- NỀN ĐẤT
     if v:IsA("BasePart") and IsGround(v) then
         v.Material = Enum.Material.SmoothPlastic
-        v.Color = Color3.fromRGB(145,145,145)
+        v.Color = Color3.fromRGB(150,150,150)
         v.CastShadow = false
         return
     end
 
-    -- ===== CÂY / NHÀ / DECOR =====
+    -- CÂY / NHÀ / DECOR
     if v:IsA("BasePart") then
         v.Transparency = 1
         v.CanCollide = false
         v.CastShadow = false
     end
 
-    -- ===== XOÁ HIỆU ỨNG SKILL + FIX KIẾM XOAY =====
+    -- XOÁ HIỆU ỨNG SKILL
     if v:IsA("ParticleEmitter")
-    or v:IsA("Trail")
     or v:IsA("Beam")
     or v:IsA("Explosion")
     or v:IsA("Fire")
@@ -98,26 +100,43 @@ local function Fix(v)
             v:Destroy()
         end)
     end
+
+    -- 🔧 FIX KIẾM XOAY (CỰC QUAN TRỌNG)
+    if v:IsA("Trail") then
+        pcall(function()
+            v.Enabled = false
+            v.Lifetime = 0
+            v:Destroy()
+        end)
+    end
+
+    if v:IsA("AngularVelocity")
+    or v:IsA("BodyAngularVelocity")
+    or v:IsA("Motor6D") then
+        pcall(function()
+            v:Destroy()
+        end)
+    end
 end
 
--------------------------------------------------
--- APPLY TO MAP
--------------------------------------------------
+--------------------------------------------------
+-- APPLY BAN ĐẦU
+--------------------------------------------------
 for _,v in ipairs(workspace:GetDescendants()) do
     Fix(v)
 end
 
--------------------------------------------------
--- BLOCK NEW EFFECTS (DRAGON / SKULL GUITAR / ALL)
--------------------------------------------------
+--------------------------------------------------
+-- CHẶN EFFECT MỚI (DRAGON / SKULL GUITAR / ALL)
+--------------------------------------------------
 workspace.DescendantAdded:Connect(function(v)
     task.wait()
     Fix(v)
 end)
 
--------------------------------------------------
+--------------------------------------------------
 -- FPS BOOST
--------------------------------------------------
+--------------------------------------------------
 settings().Rendering.QualityLevel = 1
 
-print("✅ FIX LAG FULL ENABLED")
+print("✅ FIX LAG FULL ENABLED | SWORD BUG FIXED | INVENTORY OK")
