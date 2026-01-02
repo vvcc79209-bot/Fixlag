@@ -1,61 +1,86 @@
--- BLOX FRUITS REMOVE TREE + HOUSE SAFE
--- KHÔNG XOÁ MẶT ĐẤT | KHÔNG Ô VUÔNG | SEA 1-3 | ANDROID
+-- BLOX FRUITS FIX LAG
+-- REMOVE TREE / HOUSE / DECOR
+-- KEEP GROUND / TERRAIN
 
-local Workspace = game:GetService("Workspace")
+local Lighting = game:GetService("Lighting")
+local Terrain = workspace.Terrain
 
-------------------------------------------------
--- HÀM KIỂM TRA MODEL CÓ PHẢI ĐẤT / ĐẢO KHÔNG
-------------------------------------------------
-local function IsGroundModel(model)
-	for _,v in ipairs(model:GetDescendants()) do
-		if v:IsA("Terrain") then
-			return true
-		end
-		if v:IsA("Part") or v:IsA("MeshPart") then
-			if v.Size.Y > 20 then -- part to = nền / đảo
-				return true
-			end
-		end
-	end
-	return false
+-- ===== LIGHTING =====
+Lighting.GlobalShadows = false
+Lighting.FogEnd = 1e10
+Lighting.Brightness = 1
+Lighting.Ambient = Color3.fromRGB(135,135,135)
+Lighting.OutdoorAmbient = Color3.fromRGB(135,135,135)
+
+for _,v in ipairs(Lighting:GetChildren()) do
+    if v:IsA("Sky")
+    or v:IsA("BloomEffect")
+    or v:IsA("SunRaysEffect")
+    or v:IsA("BlurEffect")
+    or v:IsA("ColorCorrectionEffect") then
+        v:Destroy()
+    end
 end
 
-------------------------------------------------
--- XOÁ CÂY + NHÀ KHÔNG CẦN THIẾT
-------------------------------------------------
-for _,v in ipairs(Workspace:GetDescendants()) do
-	if v:IsA("Model") then
-		local name = v.Name:lower()
+-- ===== SEA =====
+Terrain.WaterColor = Color3.fromRGB(135,135,135)
+Terrain.WaterTransparency = 0
+Terrain.WaterReflectance = 0
 
-		-- DANH SÁCH CÂY CỐI
-		if name:find("tree")
-		or name:find("bush")
-		or name:find("grass")
-		or name:find("leaf")
-		or name:find("plant")
-		or name:find("palm") then
-			pcall(function()
-				v:Destroy()
-			end)
-		end
-
-		-- DANH SÁCH NHÀ / PROP
-		if name:find("house")
-		or name:find("hut")
-		or name:find("home")
-		or name:find("building")
-		or name:find("shop")
-		or name:find("prop")
-		or name:find("decor") then
-
-			-- ❗ KHÔNG XOÁ NẾU LÀ ĐẢO / NỀN
-			if not IsGroundModel(v) then
-				pcall(function()
-					v:Destroy()
-				end)
-			end
-		end
-	end
+-- ===== CHECK GROUND =====
+local function IsGround(part)
+    if not part:IsA("BasePart") then return false end
+    if part:IsDescendantOf(Terrain) then return true end
+    if part.Size.Y >= 8 then return true end -- nền thường rất dày
+    return false
 end
 
-print("✅ XOÁ CÂY + NHÀ (KHÔNG ĐỤNG MẶT ĐẤT)")
+-- ===== CORE FUNCTION =====
+local function Fix(v)
+    -- GIỮ NỀN
+    if v:IsA("BasePart") then
+        if IsGround(v) then
+            v.Material = Enum.Material.SmoothPlastic
+            v.Color = Color3.fromRGB(135,135,135)
+            v.CastShadow = false
+        else
+            -- XOÁ CÂY / NHÀ / DECOR
+            if v.Parent:IsA("Model") then
+                pcall(function()
+                    v.Parent:Destroy()
+                end)
+            else
+                pcall(function()
+                    v:Destroy()
+                end)
+            end
+        end
+    end
+
+    -- XOÁ HIỆU ỨNG SKILL
+    if v:IsA("ParticleEmitter")
+    or v:IsA("Trail")
+    or v:IsA("Beam")
+    or v:IsA("Explosion")
+    or v:IsA("Fire")
+    or v:IsA("Smoke")
+    or v:IsA("Sparkles") then
+        v:Destroy()
+    end
+end
+
+-- ===== APPLY =====
+for _,v in ipairs(workspace:GetDescendants()) do
+    Fix(v)
+end
+
+-- ===== BLOCK NEW OBJECTS =====
+workspace.DescendantAdded:Connect(function(v)
+    task.wait()
+    Fix(v)
+end)
+
+-- ===== FPS BOOST =====
+settings().Rendering.QualityLevel = 1
+
+print("✅ FIX LAG: TREE + HOUSE REMOVED | GROUND KEPT")
