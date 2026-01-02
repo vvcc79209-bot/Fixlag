@@ -1,6 +1,8 @@
 -- BLOX FRUITS FIX LAG
--- HIDE ALL OBJECTS EXCEPT GROUND (100% WORK)
+-- HIDE TREE / HOUSE / DECOR
+-- KEEP GROUND + KEEP CHARACTERS
 
+local Players = game:GetService("Players")
 local Lighting = game:GetService("Lighting")
 local Terrain = workspace.Terrain
 
@@ -26,13 +28,22 @@ Terrain.WaterColor = Color3.fromRGB(150,150,150)
 Terrain.WaterTransparency = 0
 Terrain.WaterReflectance = 0
 
--- ===== CORE =====
-local function IsGround(part)
-    -- NỀN MAP LUÔN RẤT DÀY
-    return part:IsA("BasePart") and part.Size.Y >= 10
+-- ===== CHECK =====
+local function IsCharacter(obj)
+    local model = obj:FindFirstAncestorOfClass("Model")
+    if not model then return false end
+    return model:FindFirstChildOfClass("Humanoid") ~= nil
 end
 
+local function IsGround(part)
+    return part:IsA("BasePart") and part.Size.Y >= 8
+end
+
+-- ===== CORE =====
 local function Fix(v)
+    -- BỎ QUA PLAYER + NPC
+    if IsCharacter(v) then return end
+
     if v:IsA("BasePart") then
         if IsGround(v) then
             -- GIỮ NỀN
@@ -40,7 +51,7 @@ local function Fix(v)
             v.Color = Color3.fromRGB(150,150,150)
             v.CastShadow = false
         else
-            -- ẨN TẤT CẢ CÒN LẠI (CÂY / NHÀ / DECOR)
+            -- ẨN CÂY / NHÀ / DECOR
             v.Transparency = 1
             v.CanCollide = false
             v.CastShadow = false
@@ -71,4 +82,4 @@ end)
 
 settings().Rendering.QualityLevel = 1
 
-print("✅ FIX LAG WORKING: ONLY GROUND LEFT")
+print("✅ FIX LAG OK: KEEP CHARACTER | HIDE DECOR")
