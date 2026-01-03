@@ -175,57 +175,38 @@ LocalPlayer.CharacterAdded:Connect(function(newChar)
 end)
 
 print("Script hoàn tất! F9 để xem console.")
--- BLOX FRUITS - GRAY MAP (GROUND + SEA)
--- Change terrain color to gray
--- Stable & Low Lag
+-- BLOX FRUITS - GRAY GROUND + INVISIBLE SEA (STILL SWIMMABLE)
+-- SAFE / NO FALL / NO BUG
 
 local Terrain = workspace.Terrain
-local RunService = game:GetService("RunService")
+local Lighting = game:GetService("Lighting")
 
--- ====== SET COLORS ======
-local GRAY_COLOR = Color3.fromRGB(120, 120, 120)
+--------------------------------------------------
+-- 1. LÀM ĐẤT THÀNH MÀU XÁM
+--------------------------------------------------
+local grayColor = Color3.fromRGB(130,130,130)
 
--- ====== CHANGE TERRAIN MATERIAL COLORS ======
-local function SetTerrainGray()
-	for _, material in pairs(Enum.Material:GetEnumItems()) do
-		pcall(function()
-			Terrain:SetMaterialColor(material, GRAY_COLOR)
-		end)
-	end
+-- Đổi màu tất cả vật liệu terrain
+for _, material in pairs(Enum.Material:GetEnumItems()) do
+	pcall(function()
+		Terrain:SetMaterialColor(material, grayColor)
+	end)
 end
 
--- ====== CHANGE SEA WATER ======
-local function SetSeaGray()
-	Terrain.WaterColor = Color3.fromRGB(130, 130, 130)
-	Terrain.WaterTransparency = 0.4
-	Terrain.WaterReflectance = 0
-	Terrain.WaterWaveSize = 0
-	Terrain.WaterWaveSpeed = 0
-end
+--------------------------------------------------
+-- 2. BIỂN VÔ HÌNH NHƯNG VẪN BƠI ĐƯỢC
+--------------------------------------------------
+Terrain.WaterTransparency = 1      -- Biển trong suốt
+Terrain.WaterColor = grayColor     -- Phòng lỗi ánh sáng
+Terrain.WaterWaveSize = 0
+Terrain.WaterWaveSpeed = 0
+Terrain.WaterReflectance = 0
 
--- ====== CHANGE PARTS (GROUND MODELS) ======
-local function SetPartsGray()
-	for _, v in ipairs(workspace:GetDescendants()) do
-		if v:IsA("BasePart") then
-			if v.Material == Enum.Material.Grass
-			or v.Material == Enum.Material.Sand
-			or v.Material == Enum.Material.Ground
-			or v.Material == Enum.Material.Rock then
-				
-				v.Color = GRAY_COLOR
-				v.Material = Enum.Material.SmoothPlastic
-				v.Reflectance = 0
-			end
-		end
-	end
-end
+--------------------------------------------------
+-- 3. GIẢM HIỆU ỨNG GÂY GIẬT
+--------------------------------------------------
+Lighting.GlobalShadows = false
+Lighting.FogEnd = 100000
+Lighting.Brightness = 1
 
--- ====== RUN ======
-SetTerrainGray()
-SetSeaGray()
-SetPartsGray()
-
--- Keep stable
-RunService.Stepped:Connect(function()
-	SetSeaGray()
-end)
+print("✅ DONE: Đất xám + biển vô hình, vẫn đi/bơi bình thường")
