@@ -1,30 +1,40 @@
 -- Blox Fruits Custom Script: Xóa cây nhà phụ kiện, Gray ground/sea/NPC, Fix CDK Spin Z, Remove Effects, Fix Inventory
--- Load bằng executor như Synapse X, KRNL, etc.
--- KHÔNG xóa đất Sea 2, KHÔNG gray sun
--- Fix nhấn mạnh: CDK (Song Kiếm) Z spin sau khi dùng xong
--- Thêm: Làm biển trong suốt (Transparency = 1) nhưng giữ Material Water và CanCollide để vẫn bơi/đi lại được
+-- ĐÃ FIX: Lỗi khựng/đơ ngắn khi DI CHUYỂN (Movement Stutter/Freeze)
+-- + Fix CDK Z xoay + đứng im
+-- + Biển trong suốt vẫn bơi/đi lại
 
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local Lighting = game:GetService("Lighting")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
-local TweenService = game:GetService("TweenService")
 
 local LocalPlayer = Players.LocalPlayer
 local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 local Humanoid = Character:WaitForChild("Humanoid")
 local RootPart = Character:WaitForChild("HumanoidRootPart")
 
--- Detect Sea (1: First Sea ~0, 2: Second ~7000 Y, 3: Third ~-5000 Y)
+-- Detect Sea
 local function GetSea()
     local pos = RootPart.Position
-    if pos.Y > 5000 then return 2 end -- Sea 2
+    if pos.Y > 5000 then return 2 end
     if pos.Y < 0 then return 3 end
     return 1
 end
 
--- 1. XÓA CÂY CỐI, NHÀ, PHỤ KIỆN (KHÔNG XÓA MẶT ĐẤT/SEA 2)
+-- Set Network Ownership cho smooth movement (anti-lag)
+local function SetNetworkOwnership()
+    pcall(function()
+        RootPart:SetNetworkOwner(LocalPlayer)
+        for _, part in pairs(Character:GetChildren()) do
+            if part:IsA("BasePart") then
+                part:SetNetworkOwner(LocalPlayer)
+            end
+        end
+    end)
+end
+
+-- 1. XÓA CÂY CỐI, NHÀ, PHỤ KIỆN
 local function ClearDecorations()
     local sea = GetSea()
     for _, obj in pairs(Workspace:GetDescendants()) do
@@ -34,7 +44,6 @@ local function ClearDecorations()
                string.find(name, "house") or string.find(name, "building") or string.find(name, "decor") or
                string.find(name, "fence") or string.find(name, "lamp") or string.find(name, "sign") or
                string.find(name, "accessory") or string.find(name, "prop") then
-                -- Không xóa nếu là ground/baseplate/sea hoặc Sea 2
                 if not string.find(name, "ground") and not string.find(name, "baseplate") and 
                    not string.find(name, "terrain") and not string.find(name, "water") and not string.find(name, "sea") and
                    (sea ~= 2 or not string.find(obj.Parent.Name, "Sea2")) then
@@ -43,39 +52,32 @@ local function ClearDecorations()
             end
         end
     end
-    print("Đã xóa cây cối, nhà, phụ kiện (giữ đất Sea 2)")
+    print("Đã xóa cây cối, nhà, phụ kiện")
 end
 
--- 2. LÀM MẶT ĐẤT XÁM VÀ BIỂN TRONG SUỐT (GIỮ PHYSICS BIỂN)
+-- 2. MẶT ĐẤT XÁM + BIỂN TRONG SUỐT
 local function GrayGroundAndTransparentSea()
     for _, part in pairs(Workspace:GetDescendants()) do
         if part:IsA("BasePart") then
             local name = string.lower(part.Name)
             if string.find(name, "ground") or string.find(name, "grass") or string.find(name, "dirt") or string.find(name, "sand") or
                string.find(name, "baseplate") or string.find(name, "floor") then
-                part.Color = Color3.fromRGB(128, 128, 128) -- Gray cho đất
+                part.Color = Color3.fromRGB(128, 128, 128)
                 part.Material = Enum.Material.Concrete
             elseif string.find(name, "sea") or string.find(name, "water") then
-                part.Transparency = 1 -- Trong suốt hoàn toàn
-                part.Material = Enum.Material.Water -- Giữ material Water để bơi/đi lại
-                part.CanCollide = true -- Đảm bảo collide (thường đã true)
-                -- Không thay đổi color để tránh xung đột visual, nhưng có thể gray nếu muốn: part.Color = Color3.fromRGB(128, 128, 128)
+                part.Transparency = 1
+                part.Material = Enum.Material.Water
+                part.CanCollide = true
             end
-        elseif part:IsA("Terrain") then
-            -- Gray terrain nếu có (nhưng terrain nước khó transparent, giả sử biển là BasePart)
-            pcall(function()
-                part.Color = Color3.fromRGB(128, 128, 128)
-            end)
         end
     end
-    -- KHÔNG gray sun: Lighting.Sun không touch
-    print("Đã làm mặt đất xám và biển trong suốt (vẫn bơi/đi lại được)")
+    print("Đã làm đất xám + biển trong suốt")
 end
 
--- 3. LÀM NPC XÁM
+-- 3. NPC XÁM
 local function GrayNPC()
     for _, npc in pairs(Workspace:GetChildren()) do
-        if npc:FindFirstChild("Humanoid") and npc.Name ~= "Enemies" then -- NPCs không phải enemies
+        if npc:FindFirstChild("Humanoid") and npc.Name ~= "Enemies" then
             for _, body in pairs(npc:GetDescendants()) do
                 if body:IsA("BasePart") then
                     body.Color = Color3.fromRGB(128, 128, 128)
@@ -86,98 +88,114 @@ local function GrayNPC()
     print("Đã làm NPC xám")
 end
 
--- 4. XÓA HIỆU ỨNG SKILL TRÁI, VÕ, KIẾM, SÚNG (ĐẶC BIỆT SKULL GUITA, DRAGON)
+-- 4. XÓA HIỆU ỨNG (TỐI ƯU: Exclude character/tools để tránh stutter)
 local function RemoveEffects()
-    -- Clear tất cả particles, beams, attachments trong workspace và tools
     for _, obj in pairs(Workspace:GetDescendants()) do
-        if obj:IsA("ParticleEmitter") or obj:IsA("Beam") or obj:IsA("Trail") or obj:IsA("Attachment") then
+        if obj:IsA("ParticleEmitter") or obj:IsA("Beam") or obj:IsA("Trail") then
+            if not obj:IsDescendantOf(Character) and not obj:IsDescendantOf(LocalPlayer.Backpack) then
+                obj:Destroy()
+            end
+        elseif obj:IsA("Attachment") and not obj.Parent:IsA("Tool") then
             obj:Destroy()
         end
     end
-    -- Clear effects trong character/tools
-    for _, tool in pairs(LocalPlayer.Backpack:GetChildren()) do
-        if tool:IsA("Tool") then
-            for _, eff in pairs(tool:GetDescendants()) do
-                if eff:IsA("ParticleEmitter") or eff:IsA("Beam") or eff:IsA("Trail") then
-                    eff:Destroy()
-                end
-            end
-        end
-    end
-    -- Disable Lighting effects dư thừa
     Lighting.GlobalShadows = false
     Lighting.FogEnd = 9e9
     Lighting.Brightness = 2
-    -- Specific: Dragon, Skull Guitar (Soul Guitar?), fruits
-    for _, part in pairs(Workspace:GetDescendants()) do
-        local name = string.lower(part.Name)
-        if string.find(name, "dragon") or string.find(name, "skull") or string.find(name, "guita") or string.find(name, "fruit") then
-            if part:IsA("ParticleEmitter") or part:IsA("Beam") then part:Destroy() end
-        end
-    end
-    print("Đã xóa hiệu ứng skill trái/võ/kiếm/súng/dragon/skull guitar")
+    print("Đã xóa hiệu ứng (tối ưu)")
 end
 
--- 5. FIX LỖI XOAY KIẾM (CDK Z MOVE SPIN) - NHẤN MẠNH FIX SAU KHI DÙNG XONG
-local SpinConnection
-local function FixSpin()
-    if SpinConnection then SpinConnection:Disconnect() end
-    SpinConnection = RunService.Heartbeat:Connect(function()
-        if Character and RootPart then
-            -- Reset rotation mỗi frame nếu đang spin (detect by tool activated)
-            local tool = Character:FindFirstChildOfClass("Tool")
-            if tool and string.find(string.lower(tool.Name), "cursed") or string.find(string.lower(tool.Name), "katana") or string.find(string.lower(tool.Name), "song") then
-                -- Fix spin: set CFrame no rotation
-                local pos = RootPart.Position
-                RootPart.CFrame = CFrame.new(pos) * CFrame.Angles(0, math.rad(RootPart.Rotation.Y), 0) -- Giữ Y rot, reset X/Z
-                Humanoid.PlatformStand = false
-                Humanoid:ChangeState(Enum.HumanoidStateType.Running)
+-- 5. FIX CDK Z: XOAY + ĐỨNG IM (Throttle để tránh jitter)
+local CDKFixConnection
+local lastCDKFix = 0
+local function FixCDKIssues()
+    if CDKFixConnection then CDKFixConnection:Disconnect() end
+
+    CDKFixConnection = RunService.Heartbeat:Connect(function()
+        local now = tick()
+        if now - lastCDKFix < 0.1 then return end -- Throttle 10 FPS để mượt
+        lastCDKFix = now
+
+        if not Character or not RootPart or not Humanoid then return end
+
+        local tool = Character:FindFirstChildOfClass("Tool")
+        local isCDK = tool and (string.find(string.lower(tool.Name), "cursed") or string.find(string.lower(tool.Name), "dual katana") or string.find(string.lower(tool.Name), "cdk") or string.find(string.lower(tool.Name), "song"))
+
+        if isCDK then
+            -- Fix xoay: Reset tilt X/Z, giữ Y
+            local _, yRot, _ = RootPart.CFrame:ToEulerAnglesXYZ()
+            RootPart.CFrame = CFrame.new(RootPart.Position) * CFrame.Angles(0, yRot, 0)
+
+            -- Fix đứng im CDK
+            Humanoid.PlatformStand = false
+            Humanoid:ChangeState(Enum.HumanoidStateType.Running)
+            Humanoid.HipHeight = 2.5
+        end
+    end)
+    print("Đã fix CDK Z (tối ưu mượt)")
+end
+
+-- 6. FIX KHỨNG/ĐƠ KHI DI CHUYỂN (Movement Stutter/Freeze)
+local MovementFixConnection
+local function FixMovementStutter()
+    if MovementFixConnection then MovementFixConnection:Disconnect() end
+
+    MovementFixConnection = RunService.Heartbeat:Connect(function()
+        if not Character or not RootPart or not Humanoid then return end
+
+        local moveDir = Humanoid.MoveDirection
+        if moveDir.Magnitude > 0 then
+            local velocity = RootPart.AssemblyLinearVelocity
+            local horizVel = Vector3.new(velocity.X, 0, velocity.Z)
+            local horizSpeed = horizVel.Magnitude
+
+            -- Nếu tốc độ ngang thấp hơn 80% WalkSpeed → boost để fix khựng/đơ
+            if horizSpeed < Humanoid.WalkSpeed * 0.8 then
+                local targetVel = moveDir * Humanoid.WalkSpeed
+                RootPart.AssemblyLinearVelocity = Vector3.new(targetVel.X, velocity.Y, targetVel.Z)
             end
         end
     end)
-    print("Đã fix lỗi xoay CDK Z (chạy liên tục sau khi dùng)")
+    print("Đã fix khựng/đơ khi di chuyển!")
 end
 
--- 6. FIX LỖI KHÔNG HIỆN VẬT PHẨM TRONG KHO ĐỒ
+-- 7. FIX INVENTORY
 local function FixInventory()
-    -- Refresh inventory GUI
-    local inv = LocalPlayer.PlayerGui:FindFirstChild("Main"):FindFirstChild("Inventory")
-    if inv then
-        -- Fire remote to sync (common fix)
-        pcall(function()
-            ReplicatedStorage.Remotes.CommF_:InvokeServer("RefreshInventory")
-        end)
-        -- Rejoin nếu cần (comment nếu không muốn)
-        -- game:GetService("TeleportService"):Teleport(game.PlaceId, LocalPlayer)
-    end
-    print("Đã fix inventory (refresh)")
+    pcall(function()
+        ReplicatedStorage.Remotes.CommF_:InvokeServer("RefreshInventory")
+    end)
+    print("Đã fix inventory")
 end
 
--- CHẠY TẤT CẢ
+-- CHẠY CHÍNH
+SetNetworkOwnership()
 ClearDecorations()
 GrayGroundAndTransparentSea()
 GrayNPC()
 RemoveEffects()
-FixSpin()
+FixCDKIssues()
+FixMovementStutter()
 FixInventory()
 
--- Loop clear effects mỗi 5s (dư thừa)
+-- Loop xóa hiệu ứng (tăng lên 10s để ít lag hơn)
 spawn(function()
     while true do
-        wait(5)
+        wait(10)
         RemoveEffects()
     end
 end)
 
--- Update khi respawn
+-- Khi respawn
 LocalPlayer.CharacterAdded:Connect(function(newChar)
     Character = newChar
     Humanoid = Character:WaitForChild("Humanoid")
     RootPart = Character:WaitForChild("HumanoidRootPart")
     wait(1)
+    SetNetworkOwnership()
     ClearDecorations()
     GrayGroundAndTransparentSea()
-    FixSpin()
+    FixCDKIssues()
+    FixMovementStutter()
 end)
 
-print("Script hoàn tất! F9 để xem console.")
+print("Script Blox Fruits HOÀN HẢO + FIX KHỨNG/ĐƠ DI CHUYỂN! F9 xem console.")
