@@ -174,153 +174,80 @@ LocalPlayer.CharacterAdded:Connect(function(newChar)
     FixSpin()
 end)
 
-print("Script hoàn tất! F9 để xem console.")-- BLOX FRUITS FIX LAG - FINAL STABLE
--- FIX SWORD SPIN BUG
--- FIX SEA 2 GROUND BUG
+print("Script hoàn tất! F9 để xem console.")-- Blox Fruits Script: Gray Đất/Biển + Xóa Effects Trái/Melee/Kiếm/Súng (Skull Guitar & Dragon)
+-- Load bằng executor (Synapse X, KRNL, etc.)
+-- Loop xóa effects liên tục, KHÔNG gray sun, giữ đất Sea 2
 
 local Players = game:GetService("Players")
-local Lighting = game:GetService("Lighting")
-local Terrain = workspace.Terrain
+local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
 
---------------------------------------------------
--- LIGHTING (GIỮ TRỜI / MẶT TRỜI)
---------------------------------------------------
-Lighting.GlobalShadows = false
-Lighting.FogEnd = 1e10
+local LocalPlayer = Players.LocalPlayer
 
-for _,v in ipairs(Lighting:GetChildren()) do
-    if v:IsA("BloomEffect")
-    or v:IsA("SunRaysEffect")
-    or v:IsA("BlurEffect")
-    or v:IsA("ColorCorrectionEffect") then
-        v:Destroy()
+-- 1. LÀM MẶT ĐẤT VÀ BIỂN XÁM
+local function GrayGroundAndSea()
+    for _, part in pairs(Workspace:GetDescendants()) do
+        if part:IsA("BasePart") then
+            local name = string.lower(part.Name)
+            if string.find(name, "ground") or string.find(name, "grass") or string.find(name, "dirt") or 
+               string.find(name, "sand") or string.find(name, "baseplate") or string.find(name, "floor") or
+               string.find(name, "sea") or string.find(name, "water") or string.find(name, "terrain") then
+                part.Color = Color3.fromRGB(128, 128, 128) -- Xám
+                part.Material = Enum.Material.Concrete
+            end
+        end
     end
+    print("Đã làm mặt đất và biển xám!")
 end
 
---------------------------------------------------
--- SEA (XÁM)
---------------------------------------------------
-Terrain.WaterColor = Color3.fromRGB(150,150,150)
-Terrain.WaterTransparency = 0
-Terrain.WaterReflectance = 0
-
---------------------------------------------------
--- CHECK FUNCTIONS
---------------------------------------------------
-local function IsCharacter(obj)
-    local m = obj:FindFirstAncestorOfClass("Model")
-    return m and m:FindFirstChildOfClass("Humanoid")
+-- 2. XÓA HIỆU ỨNG TRÁI/MELEE/KIẾM/SÚNG (ĐẶC BIỆT SKULL GUITAR & DRAGON)
+local function RemoveEffects()
+    for _, obj in pairs(Workspace:GetDescendants()) do
+        local name = string.lower(obj.Name)
+        if obj:IsA("ParticleEmitter") or obj:IsA("Beam") or obj:IsA("Trail") or obj:IsA("Explosion") or obj:IsA("Fire") or obj:IsA("Smoke") then
+            -- Đặc biệt target Skull Guitar (Soul Guitar), Dragon
+            if string.find(name, "skull") or string.find(name, "guita") or string.find(name, "soul") or 
+               string.find(name, "dragon") or string.find(name, "fruit") or string.find(name, "melee") or 
+               string.find(name, "sword") or string.find(name, "gun") or string.find(name, "effect") then
+                obj:Destroy()
+            elseif obj.Parent and (string.find(string.lower(obj.Parent.Name), "skull") or string.find(string.lower(obj.Parent.Name), "guita") or 
+                                   string.find(string.lower(obj.Parent.Name), "dragon")) then
+                obj:Destroy()
+            else
+                obj:Destroy() -- Xóa tất cả effects chung
+            end
+        end
+    end
+    -- Clear effects trong tools/character
+    pcall(function()
+        for _, tool in pairs(LocalPlayer.Character:GetChildren()) do
+            if tool:IsA("Tool") then
+                for _, eff in pairs(tool:GetDescendants()) do
+                    if eff:IsA("ParticleEmitter") or eff:IsA("Beam") or eff:IsA("Trail") then
+                        eff:Destroy()
+                    end
+                end
+            end
+        end
+    end)
 end
 
-local function IsNPC(obj)
-    local m = obj:FindFirstAncestorOfClass("Model")
-    return m and m:FindFirstChildOfClass("Humanoid")
-       and not Players:GetPlayerFromCharacter(m)
-end
+-- CHẠY NGAY
+GrayGroundAndSea()
+RemoveEffects()
 
-local function IsGround(part)
-    -- GIỮ TẤT CẢ TERRAIN
-    if part:IsDescendantOf(Terrain) then
-        return true
+-- LOOP XÓA EFFECTS MỖI 0.5s (vì spawn liên tục)
+spawn(function()
+    while true do
+        wait(0.5)
+        RemoveEffects()
     end
-    -- GIỮ PART NỀN THẬT (SEA 2)
-    if part:IsA("BasePart") and part.Anchored and part.CanCollide then
-        return true
-    end
-    return false
-end
-
---------------------------------------------------
--- FIX SWORD SPIN (CỐT LÕI)
---------------------------------------------------
-local function FixSwordSpin(v)
-    if v:IsA("AlignOrientation") or v:IsA("BodyGyro") then
-        pcall(function()
-            v.Enabled = false
-            v.MaxTorque = Vector3.zero
-            v.Responsiveness = 0
-        end)
-    end
-
-    if v:IsA("AngularVelocity") or v:IsA("BodyAngularVelocity") then
-        pcall(function()
-            v.AngularVelocity = Vector3.zero
-            v.MaxTorque = Vector3.zero
-        end)
-    end
-end
-
---------------------------------------------------
--- CORE FIX
---------------------------------------------------
-local function Fix(v)
-    -- KHÔNG ĐỤNG PLAYER
-    if IsCharacter(v) then
-        FixSwordSpin(v)
-        return
-    end
-
-    -- NPC MÀU XÁM
-    if IsNPC(v) and v:IsA("BasePart") then
-        v.Material = Enum.Material.SmoothPlastic
-        v.Color = Color3.fromRGB(150,150,150)
-        v.CastShadow = false
-        return
-    end
-
-    -- GIỮ NỀN (SEA 1 + SEA 2)
-    if v:IsA("BasePart") and IsGround(v) then
-        v.Material = Enum.Material.SmoothPlastic
-        v.Color = Color3.fromRGB(150,150,150)
-        v.CastShadow = false
-        return
-    end
-
-    -- CÂY / NHÀ / DECOR
-    if v:IsA("BasePart") then
-        v.Transparency = 1
-        v.CanCollide = false
-        v.CastShadow = false
-    end
-
-    -- XOÁ HIỆU ỨNG SKILL
-    if v:IsA("ParticleEmitter")
-    or v:IsA("Beam")
-    or v:IsA("Explosion")
-    or v:IsA("Fire")
-    or v:IsA("Smoke")
-    or v:IsA("Sparkles")
-    or v:IsA("Highlight")
-    or v:IsA("PointLight")
-    or v:IsA("SurfaceLight")
-    or v:IsA("SpotLight")
-    or v:IsA("Trail") then
-        pcall(function()
-            v.Enabled = false
-            v:Destroy()
-        end)
-    end
-
-    -- FIX XOAY LIÊN TỤC
-    FixSwordSpin(v)
-end
-
---------------------------------------------------
--- APPLY BAN ĐẦU
---------------------------------------------------
-for _,v in ipairs(workspace:GetDescendants()) do
-    Fix(v)
-end
-
---------------------------------------------------
--- CHẶN OBJECT / SKILL MỚI
---------------------------------------------------
-workspace.DescendantAdded:Connect(function(v)
-    task.wait()
-    Fix(v)
 end)
 
-settings().Rendering.QualityLevel = 1
+-- Update khi respawn
+LocalPlayer.CharacterAdded:Connect(function()
+    wait(1)
+    GrayGroundAndSea()
+end)
 
-print("✅ FIX LAG OK | SWORD BUG FIXED | SEA 2 SAFE")
+print("Script hoàn tất! Effects sẽ bị xóa liên tục (Skull Guitar & Dragon ưu tiên). F9 xem console.")
