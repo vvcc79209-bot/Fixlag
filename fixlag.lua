@@ -1,6 +1,6 @@
--- Blox Fruits Custom Script FINAL (MERGED + EFFECT FIX)
+-- Blox Fruits Custom Script FINAL (MERGED + EFFECT FIX + CDK Z ROTATION FIX)
 -- Gray ground + Transparent Sea (SAFE)
--- Fix CDK Z, Fix movement stutter
+-- Fix CDK Z rotation, Fix movement stutter
 -- Remove 90%+ skill effects (NO WHITE FLASH)
 -- Fix inventory
 
@@ -96,7 +96,6 @@ end
 -- REMOVE HEAVY EFFECTS (FIX TRẮNG SAU CHIÊU)
 --------------------------------------------------
 local function RemoveHeavyEffects(obj)
-    -- EFFECT NẶNG
     if obj:IsA("ParticleEmitter")
     or obj:IsA("Trail")
     or obj:IsA("Beam")
@@ -114,23 +113,19 @@ local function RemoveHeavyEffects(obj)
         end)
     end
 
-    -- GUI EFFECT
     if obj:IsA("BillboardGui") or obj:IsA("SurfaceGui") then
         pcall(function() obj:Destroy() end)
     end
 
-    -- DECAL / TEXTURE
     if obj:IsA("Decal") or obj:IsA("Texture") then
         obj.Transparency = 1
     end
 
-    -- SOUND
     if obj:IsA("Sound") then
         obj.Volume = 0
         obj:Stop()
     end
 
-    -- MESH TRẮNG TO
     if obj:IsA("MeshPart") then
         if obj.Transparency < 1 and obj.Size.Magnitude > 5 then
             pcall(function()
@@ -158,7 +153,6 @@ Lighting.GlobalShadows = false
 Lighting.FogEnd = 9e9
 Lighting.Brightness = 2
 
--- Kill effect spawn sau khi dùng chiêu
 Workspace.DescendantAdded:Connect(function(obj)
     task.delay(0.1, function()
         if obj
@@ -173,12 +167,12 @@ Workspace.DescendantAdded:Connect(function(obj)
 end)
 
 --------------------------------------------------
--- FIX CDK Z
+-- FIX CDK Z ROTATION + OTHER KATANA ISSUES
 --------------------------------------------------
 local function FixCDKIssues()
     RunService.Heartbeat:Connect(function()
         local tool = Character:FindFirstChildOfClass("Tool")
-        if tool and tool.Name:lower():find("katana") then
+        if tool and (tool.Name == "Cursed Dual Katana" or string.lower(tool.Name):find("katana")) then
             local _, y, _ = RootPart.CFrame:ToEulerAnglesXYZ()
             RootPart.CFrame = CFrame.new(RootPart.Position) * CFrame.Angles(0, y, 0)
             Humanoid.PlatformStand = false
@@ -219,7 +213,7 @@ SetNetworkOwnership()
 ClearDecorations()
 GrayGroundAndTransparentSea()
 RemoveEffects()
-FixCDKIssues()
+FixCDKIssues()          -- Đã fix cho CDK
 FixMovementStutter()
 FixInventory()
 
@@ -241,4 +235,4 @@ LocalPlayer.CharacterAdded:Connect(function(newChar)
     RemoveEffects()
 end)
 
-print("✅ BLOX FRUITS FINAL: NO WHITE EFFECT | FPS BOOST MAX")
+print("✅ BLOX FRUITS FINAL: CDK Z ROTATION FIXED | NO WHITE EFFECT | FPS BOOST MAX")
