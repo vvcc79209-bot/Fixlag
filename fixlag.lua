@@ -1,7 +1,7 @@
--- Blox Fruits Custom Script FINAL (NO TRANSPARENT SEA)
+-- Blox Fruits Custom Script FINAL
 -- Gray ground
+-- Remove ~90% skill effects (SAFE – vẫn thấy chiêu)
 -- Fix walk under water (force swim)
--- Remove ~95% skill effects (ALL PLAYERS)
 -- Fix CDK Z, movement stutter, inventory
 
 local Players = game:GetService("Players")
@@ -21,7 +21,7 @@ local Terrain = Workspace:FindFirstChildOfClass("Terrain")
 --------------------------------------------------
 pcall(function()
     RootPart:SetNetworkOwner(LocalPlayer)
-    for _,p in pairs(Character:GetChildren()) do
+    for _, p in pairs(Character:GetChildren()) do
         if p:IsA("BasePart") then
             p:SetNetworkOwner(LocalPlayer)
         end
@@ -76,57 +76,47 @@ local function GrayGroundOnly()
 end
 
 --------------------------------------------------
--- REMOVE ~95% SKILL EFFECTS (FIX SKILL VẪN HIỆN)
+-- REMOVE ~90% EFFECTS (CHỈ XOÁ PHẦN NẶNG)
 --------------------------------------------------
-local EffectKeywords = {
-    "effect","vfx","fx","skill","ability",
-    "explosion","blast","hit","impact",
-    "slash","cut","fire","ice","light",
-    "magma","smoke","electric","lightning","dark"
-}
-
-local function IsEffect(obj)
-    local n = obj.Name:lower()
-    for _,k in pairs(EffectKeywords) do
-        if string.find(n,k) then return true end
-    end
-    return false
-end
-
-local function KillEffect(obj)
+local function ReduceEffects(obj)
+    -- Particle / VFX nặng
     if obj:IsA("ParticleEmitter")
     or obj:IsA("Trail")
-    or obj:IsA("Beam")
-    or obj:IsA("Fire")
-    or obj:IsA("Smoke")
-    or obj:IsA("Sparkles")
-    or obj:IsA("Explosion") then
+    or obj:IsA("Beam") then
+        obj.Enabled = false
         obj:Destroy()
     end
 
-    if (obj:IsA("Model") or obj:IsA("BasePart")) and IsEffect(obj) then
-        obj:Destroy()
+    -- Explosion (chỉ xoá hiệu ứng, không xoá damage)
+    if obj:IsA("Explosion") then
+        obj.Visible = false
+        obj.BlastPressure = 0
     end
 
-    if obj:IsA("Decal") or obj:IsA("Texture") then
-        obj.Transparency = 1
-    end
-
+    -- Âm thanh skill
     if obj:IsA("Sound") then
         obj.Volume = 0
-        obj:Destroy()
+    end
+
+    -- Decal / Texture (giữ model nhưng làm mờ)
+    if obj:IsA("Decal") or obj:IsA("Texture") then
+        obj.Transparency = 0.9
     end
 end
 
-local function RemoveAllEffects()
-    for _,obj in pairs(Workspace:GetDescendants()) do
+local function RemoveEffects()
+    for _, obj in pairs(Workspace:GetDescendants()) do
         if not obj:IsDescendantOf(Character)
         and not obj:IsDescendantOf(LocalPlayer.Backpack) then
             pcall(function()
-                KillEffect(obj)
+                ReduceEffects(obj)
             end)
         end
     end
+
+    Lighting.GlobalShadows = false
+    Lighting.FogEnd = 9e9
+    Lighting.Brightness = 2
 end
 
 Workspace.DescendantAdded:Connect(function(obj)
@@ -134,7 +124,7 @@ Workspace.DescendantAdded:Connect(function(obj)
     and not obj:IsDescendantOf(LocalPlayer.Backpack) then
         task.wait()
         pcall(function()
-            KillEffect(obj)
+            ReduceEffects(obj)
         end)
     end
 end)
@@ -158,9 +148,9 @@ end)
 --------------------------------------------------
 RunService.Heartbeat:Connect(function()
     local tool = Character:FindFirstChildOfClass("Tool")
-    if tool and string.find(tool.Name:lower(),"katana") then
-        local _,y,_ = RootPart.CFrame:ToEulerAnglesXYZ()
-        RootPart.CFrame = CFrame.new(RootPart.Position) * CFrame.Angles(0,y,0)
+    if tool and string.find(tool.Name:lower(), "katana") then
+        local _, y, _ = RootPart.CFrame:ToEulerAnglesXYZ()
+        RootPart.CFrame = CFrame.new(RootPart.Position) * CFrame.Angles(0, y, 0)
         Humanoid.PlatformStand = false
     end
 end)
@@ -192,12 +182,12 @@ end)
 --------------------------------------------------
 ClearDecorations()
 GrayGroundOnly()
-RemoveAllEffects()
+RemoveEffects()
 
 task.spawn(function()
     while true do
-        task.wait(6)
-        RemoveAllEffects()
+        task.wait(8)
+        RemoveEffects()
     end
 end)
 
@@ -208,7 +198,7 @@ LocalPlayer.CharacterAdded:Connect(function(c)
     task.wait(1)
     ClearDecorations()
     GrayGroundOnly()
-    RemoveAllEffects()
+    RemoveEffects()
 end)
 
-print("✅ BLOX FRUITS FINAL: SKILL REMOVED | SWIM FIXED | NO TRANSPARENT SEA")
+print("✅ BLOX FRUITS FINAL: REMOVE ~90% EFFECTS | SWIM OK | FPS BOOST")
