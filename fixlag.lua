@@ -1,15 +1,12 @@
--- Blox Fruits Custom Script FINAL
--- Gray ground + Invisible Sea (SAFE)
--- Remove ALL skill effects (Fruit / Melee / Gun / Sword)
--- Gray NPC auto
--- Fix CDK Z, Fix movement stutter, Fix inventory
+-- Blox Fruits Custom Script FINAL (MERGED)
+-- Gray ground + Transparent Sea (SAFE)
+-- Fix CDK Z, Fix movement stutter, Remove 90% skill effects, Fix inventory
 
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local Lighting = game:GetService("Lighting")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
-local Debris = game:GetService("Debris")
 
 local LocalPlayer = Players.LocalPlayer
 local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
@@ -27,7 +24,7 @@ local function GetSea()
 end
 
 --------------------------------------------------
--- Network ownership
+-- Network ownership (anti lag movement)
 --------------------------------------------------
 local function SetNetworkOwnership()
     pcall(function()
@@ -41,15 +38,20 @@ local function SetNetworkOwnership()
 end
 
 --------------------------------------------------
--- CLEAR DECOR
+-- CLEAR DECORATIONS
 --------------------------------------------------
 local function ClearDecorations()
+    local sea = GetSea()
     for _, obj in pairs(Workspace:GetDescendants()) do
         if obj:IsA("BasePart") or obj:IsA("Model") then
-            local n = string.lower(obj.Name)
-            if n:find("tree") or n:find("rock") or n:find("bush")
-            or n:find("house") or n:find("decor") or n:find("prop") then
-                if not n:find("ground") and not n:find("terrain") then
+            local name = string.lower(obj.Name)
+            if string.find(name, "tree") or string.find(name, "rock") or string.find(name, "bush")
+            or string.find(name, "house") or string.find(name, "building")
+            or string.find(name, "decor") or string.find(name, "prop") then
+                if not string.find(name, "ground")
+                and not string.find(name, "terrain")
+                and not string.find(name, "water")
+                and not string.find(name, "sea") then
                     pcall(function() obj:Destroy() end)
                 end
             end
@@ -58,16 +60,17 @@ local function ClearDecorations()
 end
 
 --------------------------------------------------
--- GRAY GROUND + INVISIBLE SEA (CORE)
+-- GRAY GROUND + TRANSPARENT SEA
 --------------------------------------------------
 local function GrayGroundAndTransparentSea()
     local Terrain = Workspace:FindFirstChildOfClass("Terrain")
     if not Terrain then return end
+
     local GRAY = Color3.fromRGB(128,128,128)
 
-    for _, mat in ipairs(Enum.Material:GetEnumItems()) do
+    for _, material in ipairs(Enum.Material:GetEnumItems()) do
         pcall(function()
-            Terrain:SetMaterialColor(mat, GRAY)
+            Terrain:SetMaterialColor(material, GRAY)
         end)
     end
 
@@ -79,8 +82,9 @@ local function GrayGroundAndTransparentSea()
 
     for _, part in pairs(Workspace:GetDescendants()) do
         if part:IsA("BasePart") and not part:IsDescendantOf(Character) then
-            local n = string.lower(part.Name)
-            if not n:find("water") and not n:find("sea") then
+            local name = string.lower(part.Name)
+            if not string.find(name, "sea")
+            and not string.find(name, "water") then
                 part.Color = GRAY
                 part.Material = Enum.Material.Concrete
             end
@@ -89,58 +93,36 @@ local function GrayGroundAndTransparentSea()
 end
 
 --------------------------------------------------
--- GRAY NPC (AUTO)
+-- REMOVE 90% EFFECTS (MERGED CORE)
 --------------------------------------------------
-local function GrayNPCModel(model)
-    for _, p in pairs(model:GetDescendants()) do
-        if p:IsA("BasePart") then
-            p.Color = Color3.fromRGB(128,128,128)
-            p.Material = Enum.Material.Concrete
-        end
+local function RemoveHeavyEffects(obj)
+    if obj:IsA("ParticleEmitter")
+    or obj:IsA("Trail")
+    or obj:IsA("Beam")
+    or obj:IsA("Fire")
+    or obj:IsA("Smoke")
+    or obj:IsA("Sparkles")
+    or obj:IsA("Explosion") then
+        obj.Enabled = false
+        obj:Destroy()
+    end
+
+    if obj:IsA("Decal") or obj:IsA("Texture") then
+        obj.Transparency = 1
+    end
+
+    if obj:IsA("Sound") then
+        obj.Volume = 0
     end
 end
-
-local function GrayAllNPC()
-    for _, npc in pairs(Workspace:GetChildren()) do
-        if npc:FindFirstChild("Humanoid") and npc ~= Character then
-            GrayNPCModel(npc)
-        end
-    end
-end
-
-Workspace.ChildAdded:Connect(function(obj)
-    task.wait(0.3)
-    if obj:FindFirstChild("Humanoid") and obj ~= Character then
-        GrayNPCModel(obj)
-    end
-end)
-
---------------------------------------------------
--- REMOVE ALL SKILL / KILL EFFECTS (CORE GHÉP)
---------------------------------------------------
-local EffectClasses = {
-    ParticleEmitter = true,
-    Beam = true,
-    Trail = true,
-    Explosion = true,
-    Fire = true,
-    Smoke = true,
-    Sparkles = true
-}
 
 local function RemoveEffects()
     for _, obj in pairs(Workspace:GetDescendants()) do
-        if EffectClasses[obj.ClassName] then
-            if not obj:IsDescendantOf(Character)
-            and not obj:IsDescendantOf(LocalPlayer.Backpack) then
-                pcall(function() obj:Destroy() end)
-            end
-        elseif obj:IsA("Attachment") then
-            local n = string.lower(obj.Name)
-            if n:find("fx") or n:find("slash") or n:find("wave")
-            or n:find("ring") or n:find("aura") then
-                pcall(function() obj:Destroy() end)
-            end
+        if not obj:IsDescendantOf(Character)
+        and not obj:IsDescendantOf(LocalPlayer.Backpack) then
+            pcall(function()
+                RemoveHeavyEffects(obj)
+            end)
         end
     end
 
@@ -149,13 +131,22 @@ local function RemoveEffects()
     Lighting.Brightness = 2
 end
 
+Workspace.DescendantAdded:Connect(function(obj)
+    if not obj:IsDescendantOf(Character)
+    and not obj:IsDescendantOf(LocalPlayer.Backpack) then
+        pcall(function()
+            RemoveHeavyEffects(obj)
+        end)
+    end
+end)
+
 --------------------------------------------------
 -- FIX CDK Z
 --------------------------------------------------
 local function FixCDKIssues()
     RunService.Heartbeat:Connect(function()
         local tool = Character:FindFirstChildOfClass("Tool")
-        if tool and tool.Name:lower():find("katana") then
+        if tool and string.find(tool.Name:lower(), "katana") then
             local _, y, _ = RootPart.CFrame:ToEulerAnglesXYZ()
             RootPart.CFrame = CFrame.new(RootPart.Position) * CFrame.Angles(0, y, 0)
             Humanoid.PlatformStand = false
@@ -164,14 +155,18 @@ local function FixCDKIssues()
 end
 
 --------------------------------------------------
--- FIX MOVEMENT
+-- FIX MOVEMENT STUTTER
 --------------------------------------------------
 local function FixMovementStutter()
     RunService.Heartbeat:Connect(function()
         local dir = Humanoid.MoveDirection
         if dir.Magnitude > 0 then
-            RootPart.AssemblyLinearVelocity =
-                Vector3.new(dir.X, 0, dir.Z) * Humanoid.WalkSpeed
+            local vel = RootPart.AssemblyLinearVelocity
+            RootPart.AssemblyLinearVelocity = Vector3.new(
+                dir.X * Humanoid.WalkSpeed,
+                vel.Y,
+                dir.Z * Humanoid.WalkSpeed
+            )
         end
     end)
 end
@@ -191,7 +186,6 @@ end
 SetNetworkOwnership()
 ClearDecorations()
 GrayGroundAndTransparentSea()
-GrayAllNPC()
 RemoveEffects()
 FixCDKIssues()
 FixMovementStutter()
@@ -201,17 +195,18 @@ task.spawn(function()
     while true do
         task.wait(8)
         RemoveEffects()
-        GrayAllNPC()
     end
 end)
 
-LocalPlayer.CharacterAdded:Connect(function(c)
-    Character = c
-    Humanoid = c:WaitForChild("Humanoid")
-    RootPart = c:WaitForChild("HumanoidRootPart")
+LocalPlayer.CharacterAdded:Connect(function(newChar)
+    Character = newChar
+    Humanoid = Character:WaitForChild("Humanoid")
+    RootPart = Character:WaitForChild("HumanoidRootPart")
     task.wait(1)
     SetNetworkOwnership()
+    ClearDecorations()
     GrayGroundAndTransparentSea()
+    RemoveEffects()
 end)
 
-print("✅ BLOX FRUITS FINAL | GRAY MAP + NO SKILL EFFECT + NPC GRAY | CORE MERGED")
+print("✅ BLOX FRUITS FINAL MERGED: REMOVE ~90% EFFECTS | FPS BOOSTED")
