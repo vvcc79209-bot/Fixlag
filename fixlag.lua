@@ -1,8 +1,8 @@
--- Blox Fruits Custom Script FINAL (MERGED + EFFECT FIX + CDK Z ROTATION FIX)
+-- Blox Fruits Custom Script FINAL (CDK Z SPIN FIXED 100%)
 -- Gray ground + Transparent Sea (SAFE)
--- Fix CDK Z rotation, Fix movement stutter
+-- Fix CDK Z rotation + Angular Velocity ZERO
 -- Remove 90%+ skill effects (NO WHITE FLASH)
--- Fix inventory
+-- Fix inventory + No connection stack
 
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
@@ -15,29 +15,24 @@ local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 local Humanoid = Character:WaitForChild("Humanoid")
 local RootPart = Character:WaitForChild("HumanoidRootPart")
 
---------------------------------------------------
--- Detect Sea
---------------------------------------------------
-local function GetSea()
-    local pos = RootPart.Position
-    if pos.Y > 5000 then return 2 end
-    if pos.Y < 0 then return 3 end
-    return 1
-end
+local heartbeatConn -- Để tránh stack connection
 
 --------------------------------------------------
--- Network ownership (anti lag movement)
+-- Network ownership LOOP (anti lag)
 --------------------------------------------------
-local function SetNetworkOwnership()
-    pcall(function()
-        RootPart:SetNetworkOwner(LocalPlayer)
-        for _, part in pairs(Character:GetChildren()) do
-            if part:IsA("BasePart") then
-                part:SetNetworkOwner(LocalPlayer)
+task.spawn(function()
+    while true do
+        task.wait(0.5)
+        pcall(function()
+            RootPart:SetNetworkOwner(LocalPlayer)
+            for _, part in pairs(Character:GetChildren()) do
+                if part:IsA("BasePart") then
+                    part:SetNetworkOwner(LocalPlayer)
+                end
             end
-        end
-    end)
-end
+        end)
+    end
+end)
 
 --------------------------------------------------
 -- CLEAR DECORATIONS
@@ -93,20 +88,12 @@ local function GrayGroundAndTransparentSea()
 end
 
 --------------------------------------------------
--- REMOVE HEAVY EFFECTS (FIX TRẮNG SAU CHIÊU)
+-- REMOVE HEAVY EFFECTS
 --------------------------------------------------
 local function RemoveHeavyEffects(obj)
-    if obj:IsA("ParticleEmitter")
-    or obj:IsA("Trail")
-    or obj:IsA("Beam")
-    or obj:IsA("Fire")
-    or obj:IsA("Smoke")
-    or obj:IsA("Sparkles")
-    or obj:IsA("Explosion")
-    or obj:IsA("Highlight")
-    or obj:IsA("PointLight")
-    or obj:IsA("SpotLight")
-    or obj:IsA("SurfaceLight") then
+    if obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Beam") or obj:IsA("Fire")
+    or obj:IsA("Smoke") or obj:IsA("Sparkles") or obj:IsA("Explosion") or obj:IsA("Highlight")
+    or obj:IsA("PointLight") or obj:IsA("SpotLight") or obj:IsA("SurfaceLight") then
         pcall(function()
             obj.Enabled = false
             obj:Destroy()
@@ -126,13 +113,11 @@ local function RemoveHeavyEffects(obj)
         obj:Stop()
     end
 
-    if obj:IsA("MeshPart") then
-        if obj.Transparency < 1 and obj.Size.Magnitude > 5 then
-            pcall(function()
-                obj.Transparency = 1
-                obj:Destroy()
-            end)
-        end
+    if obj:IsA("MeshPart") and obj.Transparency < 1 and obj.Size.Magnitude > 5 then
+        pcall(function()
+            obj.Transparency = 1
+            obj:Destroy()
+        end)
     end
 end
 
@@ -142,9 +127,7 @@ local function RemoveEffects()
         and not obj:IsDescendantOf(LocalPlayer.Backpack)
         and not obj:IsDescendantOf(LocalPlayer.PlayerGui)
         and not obj:IsDescendantOf(workspace.CurrentCamera) then
-            pcall(function()
-                RemoveHeavyEffects(obj)
-            end)
+            pcall(function() RemoveHeavyEffects(obj) end)
         end
     end
 end
@@ -155,36 +138,24 @@ Lighting.Brightness = 2
 
 Workspace.DescendantAdded:Connect(function(obj)
     task.delay(0.1, function()
-        if obj
-        and obj.Parent
+        if obj and obj.Parent
         and not obj:IsDescendantOf(Character)
         and not obj:IsDescendantOf(LocalPlayer.Backpack) then
-            pcall(function()
-                RemoveHeavyEffects(obj)
-            end)
+            pcall(function() RemoveHeavyEffects(obj) end)
         end
     end)
 end)
 
 --------------------------------------------------
--- FIX CDK Z ROTATION + OTHER KATANA ISSUES
+-- COMBINED FIX: MOVEMENT + CDK Z SPIN (AngularVelocity ZERO + Better CFrame)
 --------------------------------------------------
-local function FixCDKIssues()
-    RunService.Heartbeat:Connect(function()
-        local tool = Character:FindFirstChildOfClass("Tool")
-        if tool and (tool.Name == "Cursed Dual Katana" or string.lower(tool.Name):find("katana")) then
-            local _, y, _ = RootPart.CFrame:ToEulerAnglesXYZ()
-            RootPart.CFrame = CFrame.new(RootPart.Position) * CFrame.Angles(0, y, 0)
-            Humanoid.PlatformStand = false
-        end
-    end)
-end
+local function CreateFixConnections()
+    if heartbeatConn then
+        heartbeatConn:Disconnect()
+    end
 
---------------------------------------------------
--- FIX MOVEMENT STUTTER
---------------------------------------------------
-local function FixMovementStutter()
-    RunService.Heartbeat:Connect(function()
+    heartbeatConn = RunService.Heartbeat:Connect(function()
+        -- Fix Movement Stutter
         local dir = Humanoid.MoveDirection
         if dir.Magnitude > 0 then
             local vel = RootPart.AssemblyLinearVelocity
@@ -193,6 +164,22 @@ local function FixMovementStutter()
                 vel.Y,
                 dir.Z * Humanoid.WalkSpeed
             )
+        end
+
+        -- Fix CDK Z Spin (chỉ khi equip CDK hoặc katana)
+        local tool = Character:FindFirstChildOfClass("Tool")
+        if tool and (tool.Name == "Cursed Dual Katana" or string.lower(tool.Name):find("katana")) then
+            local cf = RootPart.CFrame
+            local pos = cf.Position
+            local look = Vector3.new(cf.LookVector.X, 0, cf.LookVector.Z)
+            if look.Magnitude > 0 then
+                look = look.Unit
+            else
+                look = Vector3.new(0, 0, -1) -- default forward
+            end
+            RootPart.CFrame = CFrame.lookAt(pos, pos + look)
+            RootPart.AssemblyAngularVelocity = Vector3.zero -- QUAN TRỌNG: Zero spin physics
+            Humanoid.PlatformStand = false
         end
     end)
 end
@@ -209,12 +196,10 @@ end
 --------------------------------------------------
 -- MAIN
 --------------------------------------------------
-SetNetworkOwnership()
 ClearDecorations()
 GrayGroundAndTransparentSea()
 RemoveEffects()
-FixCDKIssues()          -- Đã fix cho CDK
-FixMovementStutter()
+CreateFixConnections()  -- Kết hợp CDK + Movement
 FixInventory()
 
 task.spawn(function()
@@ -229,10 +214,11 @@ LocalPlayer.CharacterAdded:Connect(function(newChar)
     Humanoid = Character:WaitForChild("Humanoid")
     RootPart = Character:WaitForChild("HumanoidRootPart")
     task.wait(1)
-    SetNetworkOwnership()
     ClearDecorations()
     GrayGroundAndTransparentSea()
     RemoveEffects()
+    CreateFixConnections()  -- Re-create connection mới
+    FixInventory()
 end)
 
-print("✅ BLOX FRUITS FINAL: CDK Z ROTATION FIXED | NO WHITE EFFECT | FPS BOOST MAX")
+print("✅ BLOX FRUITS ULTIMATE: CDK Z KHÔNG XOAY NỮA | FPS MAX | NO EFFECT")
