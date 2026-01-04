@@ -1,8 +1,8 @@
--- Blox Fruits Custom Script FINAL (FIXED)
--- Gray ground + SAFE Transparent Sea
--- Fix CDK Z, Fix movement stutter
+-- Blox Fruits Custom Script FINAL (NO TRANSPARENT SEA)
+-- Gray ground
+-- Fix walk under water (force swim)
 -- Remove ~95% skill effects (ALL PLAYERS)
--- Fix inventory
+-- Fix CDK Z, movement stutter, inventory
 
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
@@ -14,12 +14,18 @@ local LocalPlayer = Players.LocalPlayer
 local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 local Humanoid = Character:WaitForChild("Humanoid")
 local RootPart = Character:WaitForChild("HumanoidRootPart")
+local Terrain = Workspace:FindFirstChildOfClass("Terrain")
 
 --------------------------------------------------
--- Network ownership
+-- NETWORK OWNERSHIP (ANTI LAG)
 --------------------------------------------------
 pcall(function()
     RootPart:SetNetworkOwner(LocalPlayer)
+    for _,p in pairs(Character:GetChildren()) do
+        if p:IsA("BasePart") then
+            p:SetNetworkOwner(LocalPlayer)
+        end
+    end
 end)
 
 --------------------------------------------------
@@ -45,15 +51,12 @@ local function ClearDecorations()
 end
 
 --------------------------------------------------
--- GRAY GROUND + SAFE TRANSPARENT SEA (FIX CHÌM)
+-- GRAY GROUND (KHÔNG ĐỤNG NƯỚC)
 --------------------------------------------------
-local function GrayGroundAndTransparentSea()
-    local Terrain = Workspace:FindFirstChildOfClass("Terrain")
+local function GrayGroundOnly()
     if not Terrain then return end
-
     local GRAY = Color3.fromRGB(128,128,128)
 
-    -- ❗ KHÔNG ĐỔI MATERIAL WATER
     for _, material in ipairs(Enum.Material:GetEnumItems()) do
         if material ~= Enum.Material.Water then
             pcall(function()
@@ -62,22 +65,24 @@ local function GrayGroundAndTransparentSea()
         end
     end
 
-    -- Chỉ đổi hiển thị nước
-    Terrain.WaterTransparency = 1
-    Terrain.WaterColor = Color3.fromRGB(90,90,90)
-    Terrain.WaterWaveSize = 0
-    Terrain.WaterWaveSpeed = 0
-    Terrain.WaterReflectance = 0.05
+    for _, part in pairs(Workspace:GetDescendants()) do
+        if part:IsA("BasePart")
+        and not part:IsDescendantOf(Character)
+        and part.Material ~= Enum.Material.Water then
+            part.Color = GRAY
+            part.Material = Enum.Material.Concrete
+        end
+    end
 end
 
 --------------------------------------------------
--- REMOVE ~95% EFFECTS (FIX THẤY SKILL NGƯỜI KHÁC)
+-- REMOVE ~95% SKILL EFFECTS (FIX SKILL VẪN HIỆN)
 --------------------------------------------------
 local EffectKeywords = {
     "effect","vfx","fx","skill","ability",
     "explosion","blast","hit","impact",
-    "slash","cut","fire","ice","light","dark",
-    "magma","smoke","electric","lightning"
+    "slash","cut","fire","ice","light",
+    "magma","smoke","electric","lightning","dark"
 }
 
 local function IsEffect(obj)
@@ -135,7 +140,21 @@ Workspace.DescendantAdded:Connect(function(obj)
 end)
 
 --------------------------------------------------
--- FIX CDK Z SPIN
+-- FORCE SWIM (FIX ĐI BỘ DƯỚI NƯỚC)
+--------------------------------------------------
+local WATER_Y = Terrain and Terrain.WaterLevel or 0
+
+RunService.Heartbeat:Connect(function()
+    if RootPart.Position.Y < WATER_Y - 1 then
+        if Humanoid:GetState() ~= Enum.HumanoidStateType.Swimming then
+            Humanoid:ChangeState(Enum.HumanoidStateType.Swimming)
+        end
+        Humanoid.Jump = false
+    end
+end)
+
+--------------------------------------------------
+-- FIX CDK Z
 --------------------------------------------------
 RunService.Heartbeat:Connect(function()
     local tool = Character:FindFirstChildOfClass("Tool")
@@ -172,7 +191,7 @@ end)
 -- MAIN
 --------------------------------------------------
 ClearDecorations()
-GrayGroundAndTransparentSea()
+GrayGroundOnly()
 RemoveAllEffects()
 
 task.spawn(function()
@@ -188,8 +207,8 @@ LocalPlayer.CharacterAdded:Connect(function(c)
     RootPart = c:WaitForChild("HumanoidRootPart")
     task.wait(1)
     ClearDecorations()
-    GrayGroundAndTransparentSea()
+    GrayGroundOnly()
     RemoveAllEffects()
 end)
 
-print("✅ BLOX FRUITS FINAL FIXED: NO SKILL EFFECTS + SWIM OK + FPS BOOST")
+print("✅ BLOX FRUITS FINAL: SKILL REMOVED | SWIM FIXED | NO TRANSPARENT SEA")
