@@ -1,8 +1,8 @@
--- Blox Fruits Custom Script FINAL (FULL FIX)
+-- Blox Fruits Custom Script FINAL (FIXED)
 -- Gray ground + SAFE Transparent Sea
+-- Fix CDK Z, Fix movement stutter
 -- Remove ~95% skill effects (ALL PLAYERS)
--- Fix CDK Z, Fix movement, Fix inventory
--- FORCE SWIM (NO WALK UNDER SEA)
+-- Fix inventory
 
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
@@ -14,7 +14,13 @@ local LocalPlayer = Players.LocalPlayer
 local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 local Humanoid = Character:WaitForChild("Humanoid")
 local RootPart = Character:WaitForChild("HumanoidRootPart")
-local Terrain = Workspace:FindFirstChildOfClass("Terrain")
+
+--------------------------------------------------
+-- Network ownership
+--------------------------------------------------
+pcall(function()
+    RootPart:SetNetworkOwner(LocalPlayer)
+end)
 
 --------------------------------------------------
 -- CLEAR DECORATIONS
@@ -39,13 +45,15 @@ local function ClearDecorations()
 end
 
 --------------------------------------------------
--- GRAY GROUND + SAFE TRANSPARENT SEA
+-- GRAY GROUND + SAFE TRANSPARENT SEA (FIX CHÌM)
 --------------------------------------------------
 local function GrayGroundAndTransparentSea()
+    local Terrain = Workspace:FindFirstChildOfClass("Terrain")
     if not Terrain then return end
+
     local GRAY = Color3.fromRGB(128,128,128)
 
-    -- ❗ KHÔNG ĐỤNG MATERIAL WATER
+    -- ❗ KHÔNG ĐỔI MATERIAL WATER
     for _, material in ipairs(Enum.Material:GetEnumItems()) do
         if material ~= Enum.Material.Water then
             pcall(function()
@@ -63,7 +71,7 @@ local function GrayGroundAndTransparentSea()
 end
 
 --------------------------------------------------
--- REMOVE ~95% EFFECTS (ALL PLAYERS)
+-- REMOVE ~95% EFFECTS (FIX THẤY SKILL NGƯỜI KHÁC)
 --------------------------------------------------
 local EffectKeywords = {
     "effect","vfx","fx","skill","ability",
@@ -154,20 +162,6 @@ RunService.Heartbeat:Connect(function()
 end)
 
 --------------------------------------------------
--- FORCE SWIM (FIX ĐI BỘ DƯỚI BIỂN)
---------------------------------------------------
-local WATER_Y = Terrain and Terrain.WaterLevel or 0
-
-RunService.Heartbeat:Connect(function()
-    if RootPart.Position.Y < WATER_Y - 1 then
-        if Humanoid:GetState() ~= Enum.HumanoidStateType.Swimming then
-            Humanoid:ChangeState(Enum.HumanoidStateType.Swimming)
-        end
-        Humanoid.Jump = false
-    end
-end)
-
---------------------------------------------------
 -- FIX INVENTORY
 --------------------------------------------------
 pcall(function()
@@ -198,4 +192,4 @@ LocalPlayer.CharacterAdded:Connect(function(c)
     RemoveAllEffects()
 end)
 
-print("✅ BLOX FRUITS FINAL: NO EFFECTS | SWIM FIXED | FPS BOOST")
+print("✅ BLOX FRUITS FINAL FIXED: NO SKILL EFFECTS + SWIM OK + FPS BOOST")
