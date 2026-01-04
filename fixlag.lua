@@ -1,124 +1,226 @@
--- BLOX FRUITS PERFORMANCE SCRIPT
--- Effects Cleaner + Gray World
--- Terrain Safe / Sun Safe
+-- Blox Fruits Custom Script FINAL
+-- Gray ground (Concrete) + Sea transparent 100% (SAFE TERRAIN)
+-- Fix CDK Z spin (FINAL), Fix movement stutter, Remove effects, Fix inventory
 
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local Lighting = game:GetService("Lighting")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
-local Debris = game:GetService("Debris")
 
 local LocalPlayer = Players.LocalPlayer
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local Humanoid = Character:WaitForChild("Humanoid")
+local RootPart = Character:WaitForChild("HumanoidRootPart")
 
 --------------------------------------------------
--- SETTINGS
+-- Detect Sea
 --------------------------------------------------
-local REMOVE_EFFECTS = true
-local REMOVE_MAP_OBJECTS = true
-local GRAY_WORLD = true
-
---------------------------------------------------
--- EFFECT KEYWORDS (STRONG FILTER)
---------------------------------------------------
-local EffectKeywords = {
-	"effect","fx","vfx","particle","trail","beam","flash","aura","shock",
-	"explosion","spark","light","ring","fire","electric","lightning",
-	"dragon","rumble","pain","control",
-	"skull","guitar","gun","bullet","blast"
-}
-
---------------------------------------------------
--- REMOVE EFFECTS FUNCTION
---------------------------------------------------
-local function IsEffect(obj)
-	if obj:IsA("ParticleEmitter") or
-	   obj:IsA("Trail") or
-	   obj:IsA("Beam") or
-	   obj:IsA("Fire") or
-	   obj:IsA("Smoke") or
-	   obj:IsA("Sparkles") then
-		return true
-	end
-	
-	for _, key in pairs(EffectKeywords) do
-		if string.find(string.lower(obj.Name), key) then
-			return true
-		end
-	end
-	
-	return false
-end
-
-local function CleanEffects(container)
-	for _, obj in pairs(container:GetDescendants()) do
-		if IsEffect(obj) then
-			pcall(function()
-				obj.Enabled = false
-				obj:Destroy()
-			end)
-		end
-	end
+local function GetSea()
+    local pos = RootPart.Position
+    if pos.Y > 5000 then return 2 end
+    if pos.Y < 0 then return 3 end
+    return 1
 end
 
 --------------------------------------------------
--- AUTO CLEAN EFFECTS (REAL-TIME)
+-- Network ownership (anti lag movement)
 --------------------------------------------------
-if REMOVE_EFFECTS then
-	RunService.Heartbeat:Connect(function()
-		for _, v in pairs(Workspace:GetChildren()) do
-			if v:IsA("Model") or v:IsA("Folder") then
-				CleanEffects(v)
-			end
-		end
-	end)
+local function SetNetworkOwnership()
+    pcall(function()
+        RootPart:SetNetworkOwner(LocalPlayer)
+        for _, part in pairs(Character:GetChildren()) do
+            if part:IsA("BasePart") then
+                part:SetNetworkOwner(LocalPlayer)
+            end
+        end
+    end)
 end
 
 --------------------------------------------------
--- GRAY TERRAIN (GROUND + SEA)
+-- 1. CLEAR DECORATIONS
 --------------------------------------------------
-if GRAY_WORLD then
-	for _, obj in pairs(Workspace:GetDescendants()) do
-		if obj:IsA("BasePart") then
-			if not obj:IsDescendantOf(Workspace.Terrain) then
-				obj.Material = Enum.Material.Concrete
-				obj.Color = Color3.fromRGB(130,130,130)
-				obj.Reflectance = 0
-			end
-		end
-	end
+local function ClearDecorations()
+    local sea = GetSea()
+    for _, obj in pairs(Workspace:GetDescendants()) do
+        if obj:IsA("BasePart") or obj:IsA("Model") then
+            local name = string.lower(obj.Name)
+            if string.find(name, "tree") or string.find(name, "rock") or string.find(name, "bush")
+            or string.find(name, "house") or string.find(name, "building") or string.find(name, "decor")
+            or string.find(name, "fence") or string.find(name, "lamp") or string.find(name, "sign")
+            or string.find(name, "accessory") or string.find(name, "prop") then
+                if not string.find(name, "ground")
+                and not string.find(name, "baseplate")
+                and not string.find(name, "terrain")
+                and not string.find(name, "water")
+                and not string.find(name, "sea") then
+                    pcall(function() obj:Destroy() end)
+                end
+            end
+        end
+    end
 end
 
 --------------------------------------------------
--- REMOVE MAP OBJECTS (SAFE)
+-- 2. GRAY GROUND + TRANSPARENT SEA
 --------------------------------------------------
-if REMOVE_MAP_OBJECTS then
-	for _, obj in pairs(Workspace:GetChildren()) do
-		if obj:IsA("Model") then
-			local lname = string.lower(obj.Name)
-			if lname:find("tree") or
-			   lname:find("house") or
-			   lname:find("building") or
-			   lname:find("decor") or
-			   lname:find("prop") then
-				pcall(function()
-					obj:Destroy()
-				end)
-			end
-		end
-	end
+local function GrayGroundAndTransparentSea()
+    local Terrain = Workspace:FindFirstChildOfClass("Terrain")
+    if not Terrain then return end
+
+    local GRAY = Color3.fromRGB(128,128,128)
+
+    for _, material in ipairs(Enum.Material:GetEnumItems()) do
+        pcall(function()
+            Terrain:SetMaterialColor(material, GRAY)
+        end)
+    end
+
+    pcall(function()
+        Terrain.WaterTransparency = 1
+        Terrain.WaterColor = GRAY
+        Terrain.WaterWaveSize = 0
+        Terrain.WaterWaveSpeed = 0
+        Terrain.WaterReflectance = 0
+    end)
+
+    for _, part in pairs(Workspace:GetDescendants()) do
+        if part:IsA("BasePart") and not part:IsDescendantOf(Character) then
+            local name = string.lower(part.Name)
+            if not string.find(name, "sea")
+            and not string.find(name, "water")
+            and not string.find(name, "ocean") then
+                part.Color = GRAY
+                part.Material = Enum.Material.Concrete
+            end
+        end
+    end
 end
 
 --------------------------------------------------
--- CHARACTER EFFECT CLEAN
+-- 3. GRAY NPC
 --------------------------------------------------
-LocalPlayer.CharacterAdded:Connect(function(char)
-	task.wait(1)
-	CleanEffects(char)
+local function GrayNPC()
+    for _, npc in pairs(Workspace:GetChildren()) do
+        if npc:FindFirstChild("Humanoid") and npc ~= Character then
+            for _, body in pairs(npc:GetDescendants()) do
+                if body:IsA("BasePart") then
+                    body.Color = Color3.fromRGB(128,128,128)
+                end
+            end
+        end
+    end
+end
+
+--------------------------------------------------
+-- 4. REMOVE EFFECTS
+--------------------------------------------------
+local function RemoveEffects()
+    for _, obj in pairs(Workspace:GetDescendants()) do
+        if obj:IsA("ParticleEmitter") or obj:IsA("Beam") or obj:IsA("Trail") then
+            if not obj:IsDescendantOf(Character)
+            and not obj:IsDescendantOf(LocalPlayer.Backpack) then
+                obj:Destroy()
+            end
+        elseif obj:IsA("Attachment") and not obj.Parent:IsA("Tool") then
+            obj:Destroy()
+        end
+    end
+    Lighting.GlobalShadows = false
+    Lighting.FogEnd = 9e9
+    Lighting.Brightness = 2
+end
+
+--------------------------------------------------
+-- 5. FIX CDK Z SPIN (MERGED - FINAL)
+--------------------------------------------------
+local CDKFixConnection
+local function FixCDKIssues()
+    if CDKFixConnection then
+        CDKFixConnection:Disconnect()
+    end
+
+    CDKFixConnection = RunService.Heartbeat:Connect(function()
+        if not Character or not RootPart or not Humanoid then return end
+
+        local tool = Character:FindFirstChildOfClass("Tool")
+        if tool and string.find(string.lower(tool.Name), "katana") then
+            Humanoid.AutoRotate = true
+            Humanoid.PlatformStand = false
+
+            for _, v in pairs(RootPart:GetChildren()) do
+                if v:IsA("BodyGyro")
+                or v:IsA("BodyAngularVelocity")
+                or v:IsA("AlignOrientation") then
+                    v:Destroy()
+                end
+            end
+
+            RootPart.AssemblyAngularVelocity = Vector3.zero
+        end
+    end)
+end
+
+--------------------------------------------------
+-- 6. FIX MOVEMENT STUTTER
+--------------------------------------------------
+local MovementFixConnection
+local function FixMovementStutter()
+    if MovementFixConnection then MovementFixConnection:Disconnect() end
+    MovementFixConnection = RunService.Heartbeat:Connect(function()
+        if not Character or not RootPart or not Humanoid then return end
+        local dir = Humanoid.MoveDirection
+        if dir.Magnitude > 0 then
+            local vel = RootPart.AssemblyLinearVelocity
+            if Vector3.new(vel.X,0,vel.Z).Magnitude < Humanoid.WalkSpeed * 0.8 then
+                RootPart.AssemblyLinearVelocity = Vector3.new(
+                    dir.X * Humanoid.WalkSpeed,
+                    vel.Y,
+                    dir.Z * Humanoid.WalkSpeed
+                )
+            end
+        end
+    end)
+end
+
+--------------------------------------------------
+-- 7. FIX INVENTORY
+--------------------------------------------------
+local function FixInventory()
+    pcall(function()
+        ReplicatedStorage.Remotes.CommF_:InvokeServer("RefreshInventory")
+    end)
+end
+
+--------------------------------------------------
+-- MAIN
+--------------------------------------------------
+SetNetworkOwnership()
+ClearDecorations()
+GrayGroundAndTransparentSea()
+GrayNPC()
+RemoveEffects()
+FixCDKIssues()
+FixMovementStutter()
+FixInventory()
+
+task.spawn(function()
+    while true do
+        task.wait(10)
+        RemoveEffects()
+    end
 end)
 
---------------------------------------------------
--- FINAL CLEAN PASS
---------------------------------------------------
-task.delay(2, function()
-	CleanEffects(Workspace)
+LocalPlayer.CharacterAdded:Connect(function(newChar)
+    Character = newChar
+    Humanoid = Character:WaitForChild("Humanoid")
+    RootPart = Character:WaitForChild("HumanoidRootPart")
+    task.wait(1)
+    SetNetworkOwnership()
+    ClearDecorations()
+    GrayGroundAndTransparentSea()
+    FixCDKIssues()
+    FixMovementStutter()
 end)
+
+print("Blox Fruits FINAL: FIX CDK Z SPIN + FIX LAG | MERGED OK")
