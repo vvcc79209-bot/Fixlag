@@ -1,6 +1,8 @@
 -- Blox Fruits Custom Script FINAL (MERGED)
 -- Gray ground + Transparent Sea (SAFE)
--- Fix CDK Z, Fix movement stutter, Remove 90% skill effects, Fix inventory
+-- Fix CDK Z, Fix movement stutter
+-- Remove ~90% effects + REMOVE SKILL PART (PHẬT / MỎ LEO)
+-- Fix inventory
 
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
@@ -41,13 +43,16 @@ end
 -- CLEAR DECORATIONS
 --------------------------------------------------
 local function ClearDecorations()
-    local sea = GetSea()
     for _, obj in pairs(Workspace:GetDescendants()) do
         if obj:IsA("BasePart") or obj:IsA("Model") then
             local name = string.lower(obj.Name)
-            if string.find(name, "tree") or string.find(name, "rock") or string.find(name, "bush")
-            or string.find(name, "house") or string.find(name, "building")
-            or string.find(name, "decor") or string.find(name, "prop") then
+            if string.find(name, "tree")
+            or string.find(name, "rock")
+            or string.find(name, "bush")
+            or string.find(name, "house")
+            or string.find(name, "building")
+            or string.find(name, "decor")
+            or string.find(name, "prop") then
                 if not string.find(name, "ground")
                 and not string.find(name, "terrain")
                 and not string.find(name, "water")
@@ -93,7 +98,7 @@ local function GrayGroundAndTransparentSea()
 end
 
 --------------------------------------------------
--- REMOVE 90% EFFECTS (MERGED CORE)
+-- REMOVE HEAVY VISUAL EFFECTS
 --------------------------------------------------
 local function RemoveHeavyEffects(obj)
     if obj:IsA("ParticleEmitter")
@@ -103,8 +108,10 @@ local function RemoveHeavyEffects(obj)
     or obj:IsA("Smoke")
     or obj:IsA("Sparkles")
     or obj:IsA("Explosion") then
-        obj.Enabled = false
-        obj:Destroy()
+        pcall(function()
+            obj.Enabled = false
+            obj:Destroy()
+        end)
     end
 
     if obj:IsA("Decal") or obj:IsA("Texture") then
@@ -116,12 +123,48 @@ local function RemoveHeavyEffects(obj)
     end
 end
 
+--------------------------------------------------
+-- REMOVE SKILL PART (PHẬT / MỎ LEO / KIẾM)
+--------------------------------------------------
+local function RemoveSkillParts(obj)
+    if obj:IsA("BasePart") then
+        if obj.Anchored == true
+        and obj.CanCollide == false
+        and obj.Transparency < 0.95
+        and (
+            obj.Material == Enum.Material.Neon
+            or obj.Material == Enum.Material.ForceField
+        ) then
+            pcall(function()
+                obj:Destroy()
+            end)
+        end
+    end
+
+    if obj:IsA("Model") then
+        for _, v in pairs(obj:GetDescendants()) do
+            if v:IsA("BasePart")
+            and v.Anchored == true
+            and v.CanCollide == false then
+                pcall(function()
+                    obj:Destroy()
+                end)
+                break
+            end
+        end
+    end
+end
+
+--------------------------------------------------
+-- REMOVE EFFECTS CORE
+--------------------------------------------------
 local function RemoveEffects()
     for _, obj in pairs(Workspace:GetDescendants()) do
         if not obj:IsDescendantOf(Character)
         and not obj:IsDescendantOf(LocalPlayer.Backpack) then
             pcall(function()
                 RemoveHeavyEffects(obj)
+                RemoveSkillParts(obj)
             end)
         end
     end
@@ -134,8 +177,10 @@ end
 Workspace.DescendantAdded:Connect(function(obj)
     if not obj:IsDescendantOf(Character)
     and not obj:IsDescendantOf(LocalPlayer.Backpack) then
+        task.wait(0.05)
         pcall(function()
             RemoveHeavyEffects(obj)
+            RemoveSkillParts(obj)
         end)
     end
 end)
@@ -193,7 +238,7 @@ FixInventory()
 
 task.spawn(function()
     while true do
-        task.wait(8)
+        task.wait(6)
         RemoveEffects()
     end
 end)
@@ -209,4 +254,4 @@ LocalPlayer.CharacterAdded:Connect(function(newChar)
     RemoveEffects()
 end)
 
-print("✅ BLOX FRUITS FINAL MERGED: REMOVE ~90% EFFECTS | FPS BOOSTED")
+print("✅ BLOX FRUITS FINAL: FIX PHẬT | XOÁ MỎ LEO | SKILL KHÔNG CÒN DÍNH")
