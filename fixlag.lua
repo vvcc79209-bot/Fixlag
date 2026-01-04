@@ -240,3 +240,126 @@ LocalPlayer.CharacterAdded:Connect(function(newChar)
 end)
 
 print("Script Blox Fruits HOÀN HẢO + MÀU NHẠT TRONG SUỐT + FIX TẤT CẢ LỖI! F9 xem console.")
+
+-- Script Blox Fruits: Biến đất thành màu xám (Grayscale toàn thế giới), xóa biển (invisible water/fog) nhưng vẫn bơi/đi lại bình thường
+-- Tác giả: Grok (dựa trên Roblox API)
+-- Cách dùng: Copy toàn bộ code này paste vào Executor (Krnl, Synapse X, Fluxus, Script-Ware PC | Mobile: Delta, Codex, Arceus X)
+-- Chạy trong Blox Fruits. Toggle bằng Insert key.
+-- Lưu ý: Client-side, không ảnh hưởng server. Có thể bị detect nếu abuse, dùng acc phụ.
+
+local Players = game:GetService("Players")
+local Lighting = game:GetService("Lighting")
+local Terrain = workspace.Terrain
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+
+local Player = Players.LocalPlayer
+local Enabled = true
+
+-- Tạo GUI toggle (optional)
+local ScreenGui = Instance.new("ScreenGui")
+local ToggleButton = Instance.new("TextButton")
+ToggleButton.Parent = ScreenGui
+ToggleButton.Size = UDim2.new(0, 200, 0, 50)
+ToggleButton.Position = UDim2.new(0, 10, 0, 10)
+ToggleButton.Text = "Grayscale + No Sea: ON (Insert to toggle)"
+ToggleButton.BackgroundColor3 = Color3.new(0, 0.5, 0)
+ToggleButton.TextColor3 = Color3.new(1,1,1)
+ToggleButton.Font = Enum.Font.SourceSansBold
+ToggleButton.TextSize = 16
+ScreenGui.Parent = Player:WaitForChild("PlayerGui")
+
+-- Effects
+local ColorCorrection = nil
+local Atmosphere = nil
+
+local function ApplyEffects()
+    if not Enabled then return end
+    
+    -- Grayscale toàn bộ (đất, mobs, items thành xám)
+    if not ColorCorrection then
+        ColorCorrection = Instance.new("ColorCorrectionEffect")
+        ColorCorrection.Parent = Lighting
+    end
+    ColorCorrection.Saturation = -1  -- Desaturate hoàn toàn
+    ColorCorrection.Contrast = 0.1   -- Tăng contrast cho xám đẹp
+    ColorCorrection.Brightness = -0.05
+    ColorCorrection.TintColor = Color3.fromRGB(128, 128, 128) / 255  -- Bias xám trung tính
+    
+    -- Xóa biển: Transparent water terrain global
+    Terrain.WaterTransparency = 1
+    Terrain.WaterWaveSize = 0
+    Terrain.WaterWaveSpeed = 0
+    
+    -- No fog (xóa sương mù biển)
+    Lighting.FogEnd = 9e9
+    Lighting.FogStart = 9e9
+    
+    -- No atmosphere (nếu có, clear sky/water haze)
+    Atmosphere = Lighting:FindFirstChild("Atmosphere")
+    if Atmosphere then
+        Atmosphere.Density = 0
+        Atmosphere.Offset = 999
+        Atmosphere.Color = Color3.new(1,1,1)
+        Atmosphere.Decay = Color3.new(0,0,0)
+        Atmosphere.Glare = 0
+        Atmosphere.Haze = 0
+    end
+end
+
+local function RemoveEffects()
+    if ColorCorrection then
+        ColorCorrection:Destroy()
+        ColorCorrection = nil
+    end
+    Terrain.WaterTransparency = 0
+    Terrain.WaterWaveSize = 0.15  -- Default Roblox
+    Terrain.WaterWaveSpeed = 35
+    Lighting.FogEnd = 100000  -- Default-ish
+    Lighting.FogStart = 0
+    if Atmosphere then
+        Atmosphere.Density = 0.25  -- Restore if possible
+    end
+end
+
+-- Loop transparent water parts (pools ở islands, respawn)
+spawn(function()
+    while true do
+        if Enabled then
+            for _, obj in pairs(workspace:GetDescendants()) do
+                if obj:IsA("BasePart") and (obj.Material == Enum.Material.Water or string.lower(obj.Name):find("water") or string.lower(obj.Name):find("sea")) then
+                    obj.Transparency = 1
+                    obj.CanCollide = true  -- Giữ collision nếu có
+                end
+            end
+        end
+        wait(2)  -- Check mỗi 2s, không lag
+    end
+end)
+
+-- Toggle
+ToggleButton.MouseButton1Click:Connect(function()
+    Enabled = not Enabled
+    if Enabled then
+        ApplyEffects()
+        ToggleButton.Text = "Grayscale + No Sea: ON (Insert to toggle)"
+        ToggleButton.BackgroundColor3 = Color3.new(0, 0.5, 0)
+    else
+        RemoveEffects()
+        ToggleButton.Text = "Grayscale + No Sea: OFF"
+        ToggleButton.BackgroundColor3 = Color3.new(0.5, 0, 0)
+    end
+end)
+
+UserInputService.InputBegan:Connect(function(input)
+    if input.KeyCode == Enum.KeyCode.Insert then
+        Enabled = not Enabled
+        if Enabled then ApplyEffects() else RemoveEffects() end
+        ToggleButton.Text = "Grayscale + No Sea: " .. (Enabled and "ON" or "OFF") .. " (Insert to toggle)"
+        ToggleButton.BackgroundColor3 = Enabled and Color3.new(0,0.5,0) or Color3.new(0.5,0,0)
+    end
+end)
+
+-- Áp dụng ngay
+ApplyEffects()
+print("Script loaded! Nhấn Insert để toggle. Đất xám, biển biến mất nhưng vẫn bơi bình thường!")
