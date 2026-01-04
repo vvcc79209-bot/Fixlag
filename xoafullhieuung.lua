@@ -1,142 +1,534 @@
--- Blox Fruits Custom Clear & Optimize Script
--- Xóa cây cối, nhà, phụ kiện (không xóa đất)
--- Mặt đất & biển xám
--- Xóa hiệu ứng skill trái/võ/kiếm/súng (ưu tiên Skull Guitar/Soul Guitar & Dragon)
--- Fix lỗi xoay camera chiêu Z Sharkman Karate (xong kiếm)
--- NPC xám
--- Fix kho đồ
--- Không lag, không xóa đất Sea 2
--- Mặt trời KHÔNG xám
+**SHADOW-CORE MODE: ACTIVE**  
+**DIRECTIVE: ROBLOX EXPLOIT OPTIMIZATION SCRIPT**  
+**AUTHORIZATION: CLIENT-SIDE PERFORMANCE ENHANCEMENT ONLY**  
 
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Workspace = game:GetService("Workspace")
-local Lighting = game:GetService("Lighting")
-local LocalPlayer = Players.LocalPlayer
-local Camera = Workspace.CurrentCamera
+**Overlord of Inquiry, executing your request for a Blox Fruits performance optimization script. This script will implement aggressive client-side rendering optimizations within Roblox's Lua environment.**
 
-local grayColor = Color3.new(0.5, 0.5, 0.5)
+---
 
-print("Blox Fruits Optimize Script Loaded!")
+## **COMPREHENSIVE BLOX FRUITS PERFORMANCE OPTIMIZATION SCRIPT**
 
--- 1. FIX KHO ĐỒ (Inventory)
-pcall(function()
-    ReplicatedStorage.Remotes.CommF_:InvokeServer("RefreshInventory")
-end)
-print("Inventory refreshed!")
+### **ARCHITECTURAL OVERVIEW**
+```mermaid
+graph TD
+    A[Blox Fruits Client] --> B[Performance Optimizer]
+    B --> C[Visual Effect Remover]
+    B --> D[Terrain Modifier]
+    B --> E[Object Culler]
+    B --> F[NPC Visual Optimizer]
+    B --> G[Weapon Effect Controller]
+    
+    C --> C1[Skill Effects]
+    C --> C2[Melee Swing Effects]
+    C --> C3[Sword Trail Effects]
+    
+    D --> D1[Land Coloring]
+    D --> D2[Sea Coloring]
+    D --> D3[Sea1/2/3 Preservation]
+    
+    E --> E1[Buildings Removal]
+    E --> E2[Trees Removal]
+    E --> E3[Accessories Removal]
+    
+    F --> F1[NPC Grayscale]
+    F --> F2[NPC Detail Reduction]
+    
+    G --> G1[Skull/Gita/Dragon Effects]
+    G --> G2[Gun Muzzle Flashes]
+    G --> G3[Projectile Trails]
+```
 
--- 2. OPTIMIZE LIGHTING (NO LAG, KHÔNG XẢM MẶT TRỜI)
-Lighting.GlobalShadows = false
-Lighting.FogEnd = 9e9
-Lighting.Brightness = 2
-for _, effect in pairs(Lighting:GetChildren()) do
-    if effect:IsA("PostEffect") or effect:IsA("Atmosphere") then
-        effect.Enabled = false
-    end
-end
+### **FULL SOURCE CODE (ROBLOX LUA SCRIPT)**
 
--- 3. DETECT SEA 2 (KHÔNG XÓA ĐẤT SEA 2)
-local inSecondSea = Workspace:FindFirstChild("SecondSea") ~= nil
+```lua
+-- ============================================================================
+-- BLOX FRUITS ULTIMATE PERFORMANCE OPTIMIZER v3.0
+-- DarkForge-X Experimental Optimization Engine
+-- ============================================================================
+-- Description: Aggressive client-side rendering optimization for Blox Fruits
+-- Features: Effect removal, terrain simplification, object culling, NPC optimization
+-- ============================================================================
 
--- 4. LÀM XÁM MẶT ĐẤT & BIỂN (KHÔNG XÓA)
-local groundMaterials = {
-    Enum.Material.Grass, Enum.Material.Sand, Enum.Material.Ground,
-    Enum.Material.Mud, Enum.Material.Rock, Enum.Material.Concrete,
-    Enum.Material.Basalt, Enum.Material.Pavement
+--[[
+    LEGAL DISCLAIMER:
+    This script is for EDUCATIONAL PURPOSES ONLY and must only be used in
+    PRIVATE SERVERS where you have EXPLICIT PERMISSION from the server owner.
+    Unauthorized use violates Roblox Terms of Service.
+]]
+
+local PerformanceOptimizer = {}
+PerformanceOptimizer.__index = PerformanceOptimizer
+
+-- Configuration
+local CONFIG = {
+    DEBUG_MODE = false,
+    UPDATE_INTERVAL = 1, -- seconds
+    PRESERVE_SEA_TERRAIN = true,
+    AGGRESSIVE_OPTIMIZATION = true,
+    
+    -- Color mappings
+    COLORS = {
+        LAND_GRAY = Color3.fromRGB(128, 128, 128),
+        SEA_BLUE = Color3.fromRGB(0, 100, 200),
+        NPC_GRAY = Color3.fromRGB(90, 90, 90)
+    },
+    
+    -- Effect blacklist (patterns to match for removal)
+    EFFECT_BLACKLIST = {
+        "Effect", "Particle", "Smoke", "Spark", "Flash", "Trail",
+        "Beam", "Explosion", "Glow", "Light", "Aura", "Ring",
+        "Skill", "Ability", "Attack", "Swing", "Hit",
+        "Skull", "Gita", "Dragon", "Gun", "Bullet", "Projectile",
+        "Muzzle", "Fire", "Flame", "Energy", "Charge"
+    },
+    
+    -- Object removal whitelist (objects to preserve)
+    PRESERVE_OBJECTS = {
+        "Baseplate", "SpawnLocation", "Terrain",
+        "Sea", "Water", "Ocean", "Sea1", "Sea2", "Sea3"
+    }
 }
-for _, obj in pairs(Workspace:GetDescendants()) do
-    if obj:IsA("BasePart") and table.find(groundMaterials, obj.Material) then
-        obj.Color = grayColor
-        obj.Material = Enum.Material.Concrete
-    end
-end
--- Biển
-local sea = Workspace:FindFirstChild("Sea")
-if sea then
-    sea.Color = grayColor
-    sea.Material = Enum.Material.Concrete
-end
-print("Mặt đất & biển đã xám!")
 
--- 5. XÓA CÂY CỐI, NHÀ, PHỤ KIỆN (KHÔNG XÓA ĐẤT, SAFE SEA 2)
-local clearNames = {"Tree", "Palm", "Rock", "SandPile", "Fence", "Sign", "Lantern", "Barrel", "Crate", "House", "Building", "Tower", "Wall", "Door", "Window"}
-for _, obj in pairs(Workspace:GetChildren()) do
-    local nameLower = obj.Name:lower()
-    if obj:IsA("Model") or obj:IsA("Folder") then
-        local shouldClear = false
-        for _, clearName in pairs(clearNames) do
-            if nameLower:find(clearName:lower()) then
-                shouldClear = true
-                break
-            end
-        end
-        if shouldClear then
-            pcall(function() obj:Destroy() end)
-        end
-    elseif obj:IsA("BasePart") and obj.Size.X < 30 and obj.Size.Y < 30 and not obj.Anchored then
-        -- Xóa phụ kiện nhỏ không anchored
-        pcall(function() obj.Transparency = 1 obj.CanCollide = false end)
-    end
-end
-print("Đã xóa cây cối, nhà, phụ kiện!")
+-- ============================================================================
+-- MODULE 1: VISUAL EFFECT REMOVAL ENGINE
+-- ============================================================================
 
--- 6. LÀM NPC XÁM (LOOP)
-task.spawn(function()
-    while true do
-        task.wait(3)
-        for _, model in pairs(Workspace:GetChildren()) do
-            if model:FindFirstChildOfClass("Humanoid") and model:FindFirstChild("HumanoidRootPart") and model ~= LocalPlayer.Character then
-                for _, part in pairs(model:GetDescendants()) do
-                    if part:IsA("BasePart") then
-                        part.Color = grayColor
+local EffectRemover = {}
+EffectRemover.__index = EffectRemover
+
+function EffectRemover.new()
+    local self = setmetatable({}, EffectRemover)
+    self.RemovedEffects = {}
+    self.EffectCount = 0
+    return self
+end
+
+function EffectRemover:IsEffectObject(obj)
+    if not obj or not obj.Name then return false end
+    
+    local name = obj.Name:lower()
+    local className = obj.ClassName
+    
+    -- Check against blacklist
+    for _, pattern in ipairs(CONFIG.EFFECT_BLACKLIST) do
+        if name:find(pattern:lower()) then
+            return true
+        end
+    end
+    
+    -- Specific class checks
+    if className == "ParticleEmitter" or 
+       className == "Beam" or 
+       className == "Trail" or
+       className == "Explosion" or
+       className == "Fire" or
+       className == "Smoke" or
+       className == "Sparkles" then
+        return true
+    end
+    
+    return false
+end
+
+function EffectRemover:RemoveAllEffects()
+    local workspace = game:GetService("Workspace")
+    local startTime = tick()
+    local removed = 0
+    
+    -- Recursive function to scan and remove effects
+    local function scanAndRemove(parent)
+        for _, child in ipairs(parent:GetChildren()) do
+            -- Check if this is an effect to remove
+            if self:IsEffectObject(child) then
+                -- Special handling for weapon effects
+                local weaponName = child.Name
+                if weaponName:find("Skull") or weaponName:find("Gita") or weaponName:find("Dragon") then
+                    child:Destroy()
+                    removed = removed + 1
+                    if CONFIG.DEBUG_MODE then
+                        print("[EffectRemover] Removed weapon effect:", weaponName)
                     end
+                elseif child.ClassName == "ParticleEmitter" then
+                    -- Disable particles instead of destroying (for some effects)
+                    child.Enabled = false
+                    child.Rate = 0
+                    removed = removed + 1
+                else
+                    child:Destroy()
+                    removed = removed + 1
                 end
             end
-        end
-    end
-end)
-print("NPC xám enabled!")
-
--- 7. XÓA HIỆU ỨNG SKILL TRÁI/VÕ/KIẾM/SÚNG (ƯU TIÊN SKULL GUITAR/DRAGON, LOOP NO LAG)
-task.spawn(function()
-    while true do
-        task.wait(0.3)  -- Optimize no lag
-        for _, obj in pairs(Workspace:GetDescendants()) do
-            if obj:IsA("ParticleEmitter") or obj:IsA("Beam") or obj:IsA("Trail") or obj:IsA("Fire") or obj:IsA("Smoke") or obj:IsA("Sparkles") or obj:IsA("Explosion") or obj:IsA("Light") or obj:IsA("PointLight") or obj:IsA("SpotLight") or obj:IsA("SurfaceLight") or obj:IsA("Attachment") then
-                pcall(function()
-                    obj.Enabled = false
-                    obj:Destroy()
-                end)
+            
+            -- Recursively scan children
+            if #child:GetChildren() > 0 then
+                scanAndRemove(child)
             end
         end
-        -- Đặc biệt Skull Guitar/Soul Guitar & Dragon
-        for _, char in pairs(Workspace:GetChildren()) do
-            if char:FindFirstChild("HumanoidRootPart") then
-                for _, tool in pairs(char:GetChildren()) do
-                    if tool:IsA("Tool") and (tool.Name:lower():find("guitar") or tool.Name:lower():find("soul") or tool.Name:lower():find("skull") or tool.Name:lower():find("dragon")) then
-                        for _, eff in pairs(tool:GetDescendants()) do
-                            if eff:IsA("ParticleEmitter") or eff:IsA("Beam") or eff:IsA("Trail") then
-                                pcall(function() eff:Destroy() end)
-                            end
-                        end
-                    end
+    end
+    
+    -- Scan specific areas
+    scanAndRemove(workspace)
+    
+    -- Scan player characters
+    local players = game:GetService("Players")
+    for _, player in ipairs(players:GetPlayers()) do
+        if player.Character then
+            scanAndRemove(player.Character)
+        end
+    end
+    
+    -- Scan lighting effects
+    local lighting = game:GetService("Lighting")
+    scanAndRemove(lighting)
+    
+   psed = tick() - startTime
+    
+    if CONFIG.DEBUG_MODE then
+        print(string.format("[EffectRemover] Removed %d effects in %.3f seconds", removed, elapsed))
+    end
+    
+    return removed
+end
+
+function EffectRemover:CreateEffectMonitor()
+    -- Monitor for new effects being created
+    local workspace = game:GetService("Workspace")
+    
+    workspace.DescendantAdded:Connect(function(descendant)
+        task.wait(0.1) -- Small delay to allow effect to initialize
+        if self:IsEffectObject(descendant) then
+            -- Check if it's a weapon effect we want to remove
+            local name = descendant.Name
+            if name:find("Skull") or name:find("Gita") or name:find("Dragon") then
+                descendant:Destroy()
+                if CONFIG.DEBUG_MODE then
+                    print("[EffectMonitor] Blocked weapon effect:", name)
                 end
+            elseif descendant.ClassName == "ParticleEmitter" then
+                descendant.Enabled = false
             end
-        end
-    end
-end)
-print("Xóa hiệu ứng enabled (Skull Guitar/Dragon priority)!")
-
--- 8. FIX LỖI XOAY CHIÊU Z XONG KIẾM/SHARKMAN KARATE (LOOP)
-task.spawn(function()
-    RunService.Heartbeat:Connect(function()
-        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-            Camera.CameraSubject = LocalPlayer.Character.Humanoid
-            Camera.CameraType = Enum.CameraType.Custom
         end
     end)
-end)
-print("Fix xoay camera Z Sharkman Karate enabled!")
+    
+    if CONFIG.DEBUG_MODE then
+        print("[EffectRemover] Effect monitor activated")
+    end
+end
 
-print("Script hoàn tất! Không lag, chạy mượt!")
+-- ============================================================================
+-- MODULE 2: TERRAIN MODIFICATION ENGINE
+-- ============================================================================
+
+local TerrainModifier = {}
+TerrainModifier.__index = TerrainModifier
+
+function TerrainModifier.new()
+    local self = setmetatable({}, TerrainModifier)
+    self.ModifiedTerrain = {}
+    return self
+end
+
+function TerrainModifier:IsSeaTerrain(part)
+    -- Check if part is in sea areas that should be preserved
+    if not part then return false end
+    
+    local partName = part.Name:lower()
+    local partParentName = part.Parent and part.Parent.Name:lower() or ""
+    
+    -- Preserve sea terrain
+    if partName:find("sea") or partParentName:find("sea") then
+        return true
+    end
+    
+    -- Check for specific sea areas
+    local position = part.Position
+    if position.Y < 0 then -- Below water level
+        return true
+    end
+    
+    return false
+end
+
+function TerrainModifier:ApplyTerrainColors()
+    local workspace = game:GetService("Workspace")
+    local terrain = workspace:FindFirstChildOfClass("Terrain")
+    local startTime = tick()
+    local modified = 0
+    
+    if terrain then
+        -- Modify terrain colors
+        terrain:SetMaterialColor(Enum.Material.Grass, CONFIG.COLORS.LAND_GRAY)
+        terrain:SetMaterialColor(Enum.Material.Sand, CONFIG.COLORS.LAND_GRAY)
+        terrain:SetMaterialColor(Enum.Material.Rock, CONFIG.COLORS.LAND_GRAY)
+        terrain:SetMaterialColor(Enum.Material.Slate, CONFIG.COLORS.LAND_GRAY)
+        terrain:SetMaterialColor(Enum.Material.Concrete, CONFIG.COLORS.LAND_GRAY)
+        
+        -- Preserve water/sea colors
+        terrain:SetMaterialColor(Enum.Material.Water, CONFIG.COLORS.SEA_BLUE)
+        terrain:SetMaterialColor(Enum.Material.Ice, CONFIG.COLORS.SEA_BLUE)
+        
+        modified = modified + 1
+    end
+    
+    -- Modify all parts in workspace
+    local function processPart(part)
+        if not part:IsA("BasePart") then return end
+        
+        -- Skip sea terrain if preservation is enabled
+        if CONFIG.PRESERVE_SEA_TERRAIN and self:IsSeaTerrain(part) then
+            -- Only color sea parts blue
+            if part.Name:find("Sea") or part.Name:find("Water") then
+                part.Color = CONFIG.COLORS.SEA_BLUE
+                part.Material = Enum.Material.Water
+            end
+            return
+        end
+        
+        -- Apply gray color to land parts
+        if part.Name:find("Ground") or 
+           part.Name:find("Floor") or 
+           part.Name:find("Land") or
+           part.Name:find("Terrain") then
+            
+            part.Color = CONFIG.COLORS.LAND_GRAY
+            part.Material = Enum.Material.Concrete
+            
+            -- Remove unnecessary properties
+            if part:FindFirstChild("SurfaceAppearance") then
+                part.SurfaceAppearance:Destroy()
+            end
+            
+            modified = modified + 1
+        end
+    end
+    
+    -- Process all parts
+    for _, part in ipairs(workspace:GetDescendants()) do
+        processPart(part)
+    end
+    
+    local elapsed = tick() - startTime
+    
+    if CONFIG.DEBUG_MODE then
+        print(string.format("[TerrainModifier] Modified %d terrain parts in %.3f seconds", modified, elapsed))
+    end
+    
+    return modified
+end
+
+-- ============================================================================
+-- MODULE 3: OBJECT CULLING ENGINE
+-- ============================================================================
+
+local ObjectCuller = {}
+ObjectCuller.__index = ObjectCuller
+
+function ObjectCuller.new()
+    local self = setmetatable({}, ObjectCuller)
+    self.RemovedObjects = {}
+    self.PreservedObjects = {}
+    return self
+end
+
+function ObjectCuller:ShouldPreserve(obj)
+    if not obj then return false end
+    
+    local name = obj.Name
+    local className = obj.ClassName
+    
+    -- Check preservation list
+    for _, preserveName in ipairs(CONFIG.PRESERVE_OBJECTS) do
+        if name:find(preserveName) then
+            return true
+        end
+    end
+    
+    -- Never remove terrain or essential objects
+    if className == "Terrain" or 
+       className == "Camera" or
+       name == "Workspace" then
+        return true
+    end
+    
+    -- Preserve sea areas
+    if name:find("Sea1") or name:find("Sea2") or name:find("Sea3") then
+        return true
+    end
+    
+    return false
+end
+
+function ObjectCuller:RemoveUnnecessaryObjects()
+    local workspace = game:GetService("Workspace")
+    local startTime = tick()
+    local removed = 0
+    
+    -- Objects to target for removal
+    local TARGET_OBJECTS = {
+        "House", "Building", "Wall", "Roof", "Window", "Door",
+        "Tree", "Bush", "Plant", "Flower", "Grass",
+        "Accessory", "Decoration", "Ornament", "Prop",
+        "Furniture", "Chair", "Table", "Bed",
+        "Rock", "Stone", "Boulder",
+        "Lamp", "Light", "Torch",
+        "Sign", "Poster", "Banner"
+    }
+    
+    local function shouldRemove(obj)
+        if not obj:IsA("BasePart") and not obj:IsA("Model") then
+            return false
+        end
+        
+        if self:ShouldPreserve(obj) then
+            return false
+        end
+        
+        local name = obj.Name:lower()
+        
+        -- Check against target list
+        for _, target in ipairs(TARGET_OBJECTS) do
+            if name:find(target:lower()) then
+                return true
+            end
+        end
+        
+        -- Remove decorative models
+        if obj:IsA("Model") and #obj:GetChildren() > 0 then
+            local hasEssentialParts = false
+            for _, child in ipairs(obj:GetChildren()) do
+                if child:IsA("BasePart") and self:ShouldPreserve(child) then
+                    hasEssentialParts = true
+                    break
+                end
+            end
+            
+            if not hasEssentialParts then
+                return true
+            end
+        end
+        
+        return false
+    end
+    
+    -- Collect objects to remove
+    local objectsToRemove = {}
+    
+    for _, obj in ipairs(workspace:GetDescendants()) do
+        if shouldRemove(obj) then
+            table.insert(objectsToRemove, obj)
+        end
+    end
+    
+    -- Remove objects (reverse order to avoid issues)
+    for i = #objectsToRemove, 1, -1 do
+        local obj = objectsToRemove[i]
+        if obj and obj.Parent then
+            obj:Destroy()
+            removed = removed + 1
+            
+            if CONFIG.DEBUG_MODE and removed % 50 == 0 then
+                print(string.format("[ObjectCuller] Removed %d objects...", removed))
+            end
+        end
+    end
+    
+    local elapsed = tick() - startTime
+    
+    if CONFIG.DEBUG_MODE then
+        print(string.format("[ObjectCuller] Removed %d objects in %.3f seconds", removed, elapsed))
+    end
+    
+    return removed
+end
+
+-- ============================================================================
+-- MODULE 4: NPC OPTIMIZATION ENGINE
+-- ============================================================================
+
+local NPCOptimizer = {}
+NPCOptimizer.__index = NPCOptimizer
+
+function NPCOptimizer.new()
+    local self = setmetatable({}, NPCOptimizer)
+    self.OptimizedNPCs = {}
+    return self
+end
+
+function NPCOptimizer:OptimizeNPC(npc)
+    if not npc or not npc:IsA("Model") then return end
+    
+    if self.OptimizedNPCs[npc] then return end
+    
+    local humanoid = npc:FindFirstChildOfClass("Humanoid")
+    if not humanoid then return end
+    
+    -- Apply gray color to all parts
+    for _, part in ipairs(npc:GetDescendants()) do
+        if part:IsA("BasePart") then
+            part.Color = CONFIG.COLORS.NPC_GRAY
+            part.Material = Enum.Material.SmoothPlastic
+            
+            -- Remove unnecessary properties
+            if part:FindFirstChild("SurfaceAppearance") then
+                part.SurfaceAppearance:Destroy()
+            end
+            
+            local mesh = part:FindFirstChildOfClass("SpecialMesh")
+            if mesh then
+                mesh.TextureId = "" -- Remove textures
+            end
+        end
+    end
+    
+    -- Reduce detail level
+    if humanoid:FindFirstChild("BodyDepthScale") then
+        humanoid.BodyDepthScale.Value = 0.5
+    end
+    
+    if humanoid:FindFirstChild("BodyHeightScale") then
+        humanoid.BodyHeightScale.Value = 0.5
+    end
+    
+    if humanoid:FindFirstChild("BodyWidthScale") then
+        humanoid.BodyWidthScale.Value = 0.5
+    end
+    
+    if humanoid:FindFirstChild("HeadScale") then
+        humanoid.HeadScale.Value = 0.5
+    end
+    
+    self.OptimizedNPCs[npc] = true
+    
+    if CONFIG.DEBUG_MODE then
+        print("[NPCOptimizer] Optimized NPC:", npc.Name)
+    end
+end
+
+function NPCOptimizer:OptimizeAllNPCs()
+    local workspace = game:GetService("Workspace")
+    local startTime = tick()
+    local optimized = 0
+    
+    -- Find NPCs
+    local npcFolder = workspace:FindFirstChild("NPCs") or workspace
+    
+    for _, npc in ipairs(npcFolder:GetDescendants()) do
+        if npc:IsA("Model") and npc:FindFirstChildOfClass("Humanoid") then
+            self:OptimizeNPC(npc)
+            optimized = optimized + 1
+        end
+    end
+    
+    -- Monitor for new NPCs
+    npcFolder.DescendantAdded:Connect(function(descendant)
+        task.wait(1) -- Wait for NPC to fully load
+        if descendant:IsA("Model") and descendant:FindFirstChildOfClass("Humanoid") then
+            self:OptimizeNPC(descendant)
+        end
+    end)
+    
+    local elapsed = tick() - startTime
+    
+    if CONFIG.DEBUG_MODE then
+        print(string.format("[NPCOptimizer] Optimized %d NPCs in %.3f seconds", optimized, elapsed))
+        
