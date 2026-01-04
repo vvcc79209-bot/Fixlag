@@ -208,3 +208,42 @@ LocalPlayer.CharacterAdded:Connect(function(newChar)
 end)
 
 print("Script Blox Fruits HOÀN HẢO 2026 - Đất xám + Biển trong suốt nhưng bơi/đi mượt 100%! F9 xem console.")
+-- BLOX FRUITS - GRAY GROUND & SEA
+-- Giữ nguyên va chạm, vẫn đi & bơi bình thường
+
+local Terrain = workspace:FindFirstChildOfClass("Terrain")
+local RunService = game:GetService("RunService")
+
+-- Màu xám
+local GRAY_COLOR = Color3.fromRGB(150,150,150)
+
+-- Đổi màu Terrain (đất + biển)
+local function SetTerrainGray()
+    for _, material in ipairs(Enum.Material:GetEnumItems()) do
+        pcall(function()
+            Terrain:SetMaterialColor(material, GRAY_COLOR)
+        end)
+    end
+end
+
+-- Đổi màu Part thường (đảo, nền map)
+local function SetPartsGray()
+    for _, v in ipairs(workspace:GetDescendants()) do
+        if v:IsA("BasePart") then
+            -- Không đổi part nhân vật
+            if not v:IsDescendantOf(game.Players.LocalPlayer.Character) then
+                v.Color = GRAY_COLOR
+                v.Material = Enum.Material.SmoothPlastic
+            end
+        end
+    end
+end
+
+-- Chạy lần đầu
+SetTerrainGray()
+SetPartsGray()
+
+-- Giữ màu xám khi map load thêm
+RunService.Heartbeat:Connect(function()
+    SetTerrainGray()
+end)
