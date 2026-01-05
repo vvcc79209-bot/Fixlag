@@ -1,78 +1,77 @@
--- BLOX FRUITS EXTREME LAG FIX (CLIENT SAFE)
--- Remove 95% Effects + Clean Map + Gray Terrain
--- Fix Skull Guitar, Dragon Storm, Control, Dragon, Rumble
+-- BLOX FRUITS LAG FIX - SAFE VERSION
+-- Remove ~95% effects + Hide heavy map + Gray color
+-- Client-side only
 
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
-local RunService = game:GetService("RunService")
 local Lighting = game:GetService("Lighting")
-local LocalPlayer = Players.LocalPlayer
+local RunService = game:GetService("RunService")
+
+local player = Players.LocalPlayer
 
 --------------------------------------------------
--- 1. REMOVE 95% EFFECTS (ALL SKILLS)
+-- 1. REMOVE HEAVY EFFECTS (SAFE)
 --------------------------------------------------
-local function ClearEffects(obj)
-	for _, v in pairs(obj:GetDescendants()) do
+local function RemoveEffects(obj)
+	for _, v in ipairs(obj:GetDescendants()) do
 		if v:IsA("ParticleEmitter")
 		or v:IsA("Trail")
 		or v:IsA("Beam")
 		or v:IsA("Fire")
 		or v:IsA("Smoke")
-		or v:IsA("Sparkles")
-		or v:IsA("Explosion")
-		or v:IsA("Decal")
-		or v:IsA("Texture") then
-			v:Destroy()
+		or v:IsA("Sparkles") then
+			v.Enabled = false
 		end
 	end
 end
 
--- realtime remove effects
-Workspace.DescendantAdded:Connect(function(obj)
-	task.wait()
-	if obj:IsA("ParticleEmitter")
-	or obj:IsA("Trail")
-	or obj:IsA("Beam")
-	or obj:IsA("Explosion") then
-		obj:Destroy()
+-- remove new effects when spawned
+Workspace.DescendantAdded:Connect(function(v)
+	if v:IsA("ParticleEmitter")
+	or v:IsA("Trail")
+	or v:IsA("Beam") then
+		task.wait()
+		pcall(function()
+			v.Enabled = false
+		end)
 	end
 end)
 
 --------------------------------------------------
--- 2. MAP CLEAN (NO GROUND DELETE)
+-- 2. HIDE TREE / HOUSE / PROPS (NO DELETE)
 --------------------------------------------------
-for _, v in pairs(Workspace:GetChildren()) do
-	if v:IsA("Model") then
+for _, v in ipairs(Workspace:GetDescendants()) do
+	if v:IsA("BasePart") then
 		local name = string.lower(v.Name)
 
-		if not string.find(name,"ground")
-		and not string.find(name,"terrain")
-		and not string.find(name,"sea")
-		and not string.find(name,"water") then
-			pcall(function()
-				v:Destroy()
-			end)
+		if string.find(name,"tree")
+		or string.find(name,"house")
+		or string.find(name,"rock")
+		or string.find(name,"decor")
+		or string.find(name,"prop") then
+			v.Transparency = 1
+			v.CanCollide = false
 		end
 	end
 end
 
 --------------------------------------------------
--- 3. GRAY GROUND + SEA
+-- 3. GRAY GROUND & SEA (SAFE)
 --------------------------------------------------
-for _, v in pairs(Workspace:GetDescendants()) do
+for _, v in ipairs(Workspace:GetDescendants()) do
 	if v:IsA("BasePart") then
 		local n = string.lower(v.Name)
 
 		if string.find(n,"ground")
 		or string.find(n,"terrain")
 		or string.find(n,"land") then
-			v.Color = Color3.fromRGB(120,120,120)
+			v.Color = Color3.fromRGB(130,130,130)
 			v.Material = Enum.Material.Concrete
 		end
 
-		if string.find(n,"sea")
-		or string.find(n,"water") then
-			v.Color = Color3.fromRGB(130,130,130)
+		if string.find(n,"water")
+		or string.find(n,"sea") then
+			v.Color = Color3.fromRGB(120,120,120)
 			v.Material = Enum.Material.SmoothPlastic
 		end
 	end
@@ -82,38 +81,39 @@ end
 -- 4. FIX SKULL GUITAR / DRAGON STORM
 --------------------------------------------------
 RunService.RenderStepped:Connect(function()
-	for _, v in pairs(Workspace:GetDescendants()) do
+	for _, v in ipairs(Workspace:GetDescendants()) do
 		if v:IsA("BasePart") then
 			local n = string.lower(v.Name)
 
 			if string.find(n,"skull")
 			or string.find(n,"guitar")
 			or string.find(n,"dragonstorm") then
-				v.CastShadow = false
 				v.Material = Enum.Material.SmoothPlastic
+				v.CastShadow = false
 			end
 		end
 	end
 end)
 
 --------------------------------------------------
--- 5. FIX CONTROL / DRAGON / RUMBLE
+-- 5. FIX CONTROL / DRAGON / RUMBLE (LIGHTING)
 --------------------------------------------------
 Lighting.GlobalShadows = false
+Lighting.FogEnd = 1000000
 Lighting.Brightness = 1
-Lighting.FogEnd = 1e9
 
 --------------------------------------------------
--- 6. PLAYER SKILL EFFECT CLEAN
+-- 6. PLAYER EFFECT CLEAN
 --------------------------------------------------
-LocalPlayer.CharacterAdded:Connect(function(char)
+local function OnCharacter(char)
 	task.wait(1)
-	ClearEffects(char)
-end)
+	RemoveEffects(char)
+end
 
-if LocalPlayer.Character then
-	ClearEffects(LocalPlayer.Character)
+player.CharacterAdded:Connect(OnCharacter)
+if player.Character then
+	OnCharacter(player.Character)
 end
 
 --------------------------------------------------
-print("✅ BLOX FRUITS EXTREME LAG FIX LOADED")
+print("✅ BLOX FRUITS LAG FIX (SAFE) LOADED")
