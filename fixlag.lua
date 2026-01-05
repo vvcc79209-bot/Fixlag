@@ -1,6 +1,6 @@
--- Blox Fruits Custom Script FINAL (MERGED)
--- Gray ground + Transparent Sea (SAFE)
--- Fix CDK Z, Fix movement stutter, Remove 90% skill effects, Fix inventory
+-- Blox Fruits Custom Script FINAL
+-- Gray ground (Concrete) + Sea transparent 100% (SAFE TERRAIN)
+-- Fix CDK Z spin (FINAL), Fix movement stutter, Remove 95% effects, Fix inventory
 
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
@@ -38,16 +38,17 @@ local function SetNetworkOwnership()
 end
 
 --------------------------------------------------
--- CLEAR DECORATIONS
+-- 1. CLEAR DECORATIONS
 --------------------------------------------------
 local function ClearDecorations()
-    local sea = GetSea()
     for _, obj in pairs(Workspace:GetDescendants()) do
         if obj:IsA("BasePart") or obj:IsA("Model") then
             local name = string.lower(obj.Name)
             if string.find(name, "tree") or string.find(name, "rock") or string.find(name, "bush")
             or string.find(name, "house") or string.find(name, "building")
-            or string.find(name, "decor") or string.find(name, "prop") then
+            or string.find(name, "decor") or string.find(name, "fence")
+            or string.find(name, "lamp") or string.find(name, "sign")
+            or string.find(name, "accessory") or string.find(name, "prop") then
                 if not string.find(name, "ground")
                 and not string.find(name, "terrain")
                 and not string.find(name, "water")
@@ -60,7 +61,7 @@ local function ClearDecorations()
 end
 
 --------------------------------------------------
--- GRAY GROUND + TRANSPARENT SEA
+-- 2. GRAY GROUND + TRANSPARENT SEA
 --------------------------------------------------
 local function GrayGroundAndTransparentSea()
     local Terrain = Workspace:FindFirstChildOfClass("Terrain")
@@ -74,17 +75,20 @@ local function GrayGroundAndTransparentSea()
         end)
     end
 
-    Terrain.WaterTransparency = 1
-    Terrain.WaterColor = GRAY
-    Terrain.WaterWaveSize = 0
-    Terrain.WaterWaveSpeed = 0
-    Terrain.WaterReflectance = 0
+    pcall(function()
+        Terrain.WaterTransparency = 1
+        Terrain.WaterColor = GRAY
+        Terrain.WaterWaveSize = 0
+        Terrain.WaterWaveSpeed = 0
+        Terrain.WaterReflectance = 0
+    end)
 
     for _, part in pairs(Workspace:GetDescendants()) do
         if part:IsA("BasePart") and not part:IsDescendantOf(Character) then
             local name = string.lower(part.Name)
-            if not string.find(name, "sea")
-            and not string.find(name, "water") then
+            if not string.find(name, "water")
+            and not string.find(name, "sea")
+            and not string.find(name, "ocean") then
                 part.Color = GRAY
                 part.Material = Enum.Material.Concrete
             end
@@ -93,36 +97,54 @@ local function GrayGroundAndTransparentSea()
 end
 
 --------------------------------------------------
--- REMOVE 90% EFFECTS (MERGED CORE)
+-- 3. GRAY NPC
 --------------------------------------------------
-local function RemoveHeavyEffects(obj)
-    if obj:IsA("ParticleEmitter")
-    or obj:IsA("Trail")
-    or obj:IsA("Beam")
-    or obj:IsA("Fire")
-    or obj:IsA("Smoke")
-    or obj:IsA("Sparkles")
-    or obj:IsA("Explosion") then
-        obj.Enabled = false
-        obj:Destroy()
-    end
-
-    if obj:IsA("Decal") or obj:IsA("Texture") then
-        obj.Transparency = 1
-    end
-
-    if obj:IsA("Sound") then
-        obj.Volume = 0
+local function GrayNPC()
+    for _, npc in pairs(Workspace:GetChildren()) do
+        if npc:FindFirstChild("Humanoid") and npc ~= Character then
+            for _, body in pairs(npc:GetDescendants()) do
+                if body:IsA("BasePart") then
+                    body.Color = Color3.fromRGB(128,128,128)
+                end
+            end
+        end
     end
 end
 
-local function RemoveEffects()
+--------------------------------------------------
+-- 4. REMOVE 95% EFFECTS (SAFE)
+--------------------------------------------------
+local function IsEffect(obj)
+    return obj:IsA("ParticleEmitter")
+        or obj:IsA("Trail")
+        or obj:IsA("Beam")
+        or obj:IsA("Smoke")
+        or obj:IsA("Fire")
+        or obj:IsA("Sparkles")
+        or obj:IsA("PointLight")
+        or obj:IsA("SpotLight")
+        or obj:IsA("SurfaceLight")
+end
+
+local function DisableEffect(obj)
+    pcall(function()
+        if obj:IsA("ParticleEmitter") then
+            obj.Enabled = false
+            obj.Rate = 0
+        elseif obj:IsA("Trail") or obj:IsA("Beam") then
+            obj.Enabled = false
+        elseif obj:IsA("Light") then
+            obj.Enabled = false
+        end
+    end)
+end
+
+local function RemoveEffects95()
     for _, obj in pairs(Workspace:GetDescendants()) do
-        if not obj:IsDescendantOf(Character)
+        if IsEffect(obj)
+        and not obj:IsDescendantOf(Character)
         and not obj:IsDescendantOf(LocalPlayer.Backpack) then
-            pcall(function()
-                RemoveHeavyEffects(obj)
-            end)
+            DisableEffect(obj)
         end
     end
 
@@ -132,47 +154,64 @@ local function RemoveEffects()
 end
 
 Workspace.DescendantAdded:Connect(function(obj)
-    if not obj:IsDescendantOf(Character)
-    and not obj:IsDescendantOf(LocalPlayer.Backpack) then
-        pcall(function()
-            RemoveHeavyEffects(obj)
-        end)
+    if IsEffect(obj) then
+        DisableEffect(obj)
     end
 end)
 
 --------------------------------------------------
--- FIX CDK Z
+-- 5. FIX CDK Z SPIN (FINAL)
 --------------------------------------------------
+local CDKFixConnection
 local function FixCDKIssues()
-    RunService.Heartbeat:Connect(function()
+    if CDKFixConnection then CDKFixConnection:Disconnect() end
+
+    CDKFixConnection = RunService.Heartbeat:Connect(function()
+        if not Character or not RootPart or not Humanoid then return end
+
         local tool = Character:FindFirstChildOfClass("Tool")
-        if tool and string.find(tool.Name:lower(), "katana") then
-            local _, y, _ = RootPart.CFrame:ToEulerAnglesXYZ()
-            RootPart.CFrame = CFrame.new(RootPart.Position) * CFrame.Angles(0, y, 0)
+        if tool and string.find(string.lower(tool.Name), "katana") then
+            Humanoid.AutoRotate = true
             Humanoid.PlatformStand = false
+
+            for _, v in pairs(RootPart:GetChildren()) do
+                if v:IsA("BodyGyro")
+                or v:IsA("BodyAngularVelocity")
+                or v:IsA("AlignOrientation") then
+                    v:Destroy()
+                end
+            end
+
+            RootPart.AssemblyAngularVelocity = Vector3.zero
         end
     end)
 end
 
 --------------------------------------------------
--- FIX MOVEMENT STUTTER
+-- 6. FIX MOVEMENT STUTTER
 --------------------------------------------------
+local MovementFixConnection
 local function FixMovementStutter()
-    RunService.Heartbeat:Connect(function()
+    if MovementFixConnection then MovementFixConnection:Disconnect() end
+
+    MovementFixConnection = RunService.Heartbeat:Connect(function()
+        if not Character or not RootPart or not Humanoid then return end
         local dir = Humanoid.MoveDirection
         if dir.Magnitude > 0 then
             local vel = RootPart.AssemblyLinearVelocity
-            RootPart.AssemblyLinearVelocity = Vector3.new(
-                dir.X * Humanoid.WalkSpeed,
-                vel.Y,
-                dir.Z * Humanoid.WalkSpeed
-            )
+            if Vector3.new(vel.X,0,vel.Z).Magnitude < Humanoid.WalkSpeed * 0.8 then
+                RootPart.AssemblyLinearVelocity = Vector3.new(
+                    dir.X * Humanoid.WalkSpeed,
+                    vel.Y,
+                    dir.Z * Humanoid.WalkSpeed
+                )
+            end
         end
     end)
 end
 
 --------------------------------------------------
--- FIX INVENTORY
+-- 7. FIX INVENTORY
 --------------------------------------------------
 local function FixInventory()
     pcall(function()
@@ -186,7 +225,8 @@ end
 SetNetworkOwnership()
 ClearDecorations()
 GrayGroundAndTransparentSea()
-RemoveEffects()
+GrayNPC()
+RemoveEffects95()
 FixCDKIssues()
 FixMovementStutter()
 FixInventory()
@@ -194,7 +234,7 @@ FixInventory()
 task.spawn(function()
     while true do
         task.wait(8)
-        RemoveEffects()
+        RemoveEffects95()
     end
 end)
 
@@ -206,7 +246,8 @@ LocalPlayer.CharacterAdded:Connect(function(newChar)
     SetNetworkOwnership()
     ClearDecorations()
     GrayGroundAndTransparentSea()
-    RemoveEffects()
+    FixCDKIssues()
+    FixMovementStutter()
 end)
 
-print("✅ BLOX FRUITS FINAL MERGED: REMOVE ~90% EFFECTS | FPS BOOSTED")
+print("Blox Fruits FINAL: FIX CDK Z + REMOVE 95% EFFECTS + FIX LAG ✔")
