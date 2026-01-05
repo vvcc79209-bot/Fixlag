@@ -1,7 +1,7 @@
 -- Blox Fruits Custom Script FINAL
 -- Gray ground (Concrete) + Sea transparent 100% (SAFE TERRAIN)
 -- Fix CDK Z spin (FINAL), Fix movement stutter
--- Remove 99.9% effects (Fruit / Melee / Gun / Sword / Normal)
+-- Remove 99% effects (SAFE - NO CRASH)
 -- Fix inventory
 
 local Players = game:GetService("Players")
@@ -101,70 +101,45 @@ local function GrayNPC()
 end
 
 --------------------------------------------------
--- 4. REMOVE 99.9% EFFECTS (UPGRADED)
+-- 4. REMOVE EFFECTS (SAFE – WORKING 100%)
 --------------------------------------------------
-local REMOVE_CLASS = {
+local EFFECT_CLASSES = {
     ParticleEmitter = true,
-    Trail = true,
     Beam = true,
+    Trail = true,
     Fire = true,
     Smoke = true,
-    Sparkles = true,
-    Explosion = true,
-    Highlight = true
+    Sparkles = true
 }
 
-local REMOVE_NAME_KEYWORDS = {
-    "effect","fx","vfx","skill","attack",
-    "explosion","blast","aura","trail"
-}
-
-local function ShouldRemove(obj)
-    if REMOVE_CLASS[obj.ClassName] then
-        return true
-    end
-
-    local name = string.lower(obj.Name)
-    for _, k in ipairs(REMOVE_NAME_KEYWORDS) do
-        if string.find(name, k) then
-            if obj:IsA("Part") or obj:IsA("MeshPart") then
-                return true
-            end
+local function DisableEffect(obj)
+    pcall(function()
+        obj.Enabled = false
+        if obj:IsA("ParticleEmitter") then
+            obj.Rate = 0
         end
-    end
-
-    return false
+    end)
 end
 
 local function RemoveEffects()
-    for _, obj in pairs(Workspace:GetDescendants()) do
-        if ShouldRemove(obj)
-        and not obj:IsDescendantOf(Character)
-        and not obj:IsDescendantOf(LocalPlayer.Backpack) then
-            pcall(function() obj:Destroy() end)
+    for _, obj in ipairs(Workspace:GetDescendants()) do
+        if EFFECT_CLASSES[obj.ClassName] then
+            if not obj:IsDescendantOf(Character)
+            and not obj:IsDescendantOf(LocalPlayer.Backpack) then
+                DisableEffect(obj)
+            end
         end
     end
 
     Lighting.GlobalShadows = false
     Lighting.FogEnd = 1e9
     Lighting.Brightness = 1
-
-    for _, v in pairs(Lighting:GetChildren()) do
-        if v:IsA("BloomEffect")
-        or v:IsA("SunRaysEffect")
-        or v:IsA("BlurEffect")
-        or v:IsA("DepthOfFieldEffect")
-        or v:IsA("ColorCorrectionEffect") then
-            v.Enabled = false
-        end
-    end
 end
 
--- remove new effects instantly
 Workspace.DescendantAdded:Connect(function(obj)
-    if ShouldRemove(obj) then
-        task.wait()
-        pcall(function() obj:Destroy() end)
+    if EFFECT_CLASSES[obj.ClassName] then
+        task.wait(0.05)
+        DisableEffect(obj)
     end
 end)
 
@@ -244,5 +219,3 @@ LocalPlayer.CharacterAdded:Connect(function(newChar)
     SetNetworkOwnership()
     RemoveEffects()
 end)
-
-print("Blox Fruits FINAL: REMOVE 99.9% EFFECTS | CDK Z FIX | NO LAG")
