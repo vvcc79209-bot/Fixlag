@@ -1,42 +1,62 @@
--- Blox Fruits Custom Script FINAL (ANTI LAG)
--- Gray ground + Transparent Sea (SAFE)
--- Fix CDK Z spin, Fix movement stutter
--- REMOVE 100% EFFECTS (DISABLE METHOD)
--- Fix inventory
+-- Blox Fruits FINAL SAFE (NO CONFLICT)
+-- Fix lag + CDK Z + movement
+-- Remove effects 95% (SAFE MODE)
 
+if getgenv().BF_SAFE_LOADED then return end
+getgenv().BF_SAFE_LOADED = true
+
+--------------------------------------------------
+-- SERVICES
+--------------------------------------------------
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local Lighting = game:GetService("Lighting")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local LocalPlayer = Players.LocalPlayer
-local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-local Humanoid = Character:WaitForChild("Humanoid")
-local RootPart = Character:WaitForChild("HumanoidRootPart")
+local LP = Players.LocalPlayer
 
 --------------------------------------------------
--- NETWORK OWNERSHIP
+-- CHARACTER HANDLER
 --------------------------------------------------
-pcall(function()
-    RootPart:SetNetworkOwner(LocalPlayer)
-end)
+local Character, Humanoid, RootPart
+local function SetupCharacter(char)
+    Character = char
+    Humanoid = char:WaitForChild("Humanoid", 5)
+    RootPart = char:WaitForChild("HumanoidRootPart", 5)
+end
+SetupCharacter(LP.Character or LP.CharacterAdded:Wait())
+
+LP.CharacterAdded:Connect(SetupCharacter)
 
 --------------------------------------------------
--- 1. CLEAR DECORATIONS
+-- NETWORK OWNERSHIP (SAFE)
 --------------------------------------------------
-local function ClearDecorations()
+local function SetNetOwner()
+    if not RootPart then return end
+    pcall(function()
+        RootPart:SetNetworkOwner(LP)
+    end)
+end
+
+--------------------------------------------------
+-- SAFE DECOR CLEAN (NO DESTROY MAP CORE)
+--------------------------------------------------
+local DECOR_KEYWORDS = {
+    "tree","rock","bush","prop","decor","fence",
+    "lamp","sign","house","building"
+}
+
+local function ClearDecor()
     for _, obj in ipairs(Workspace:GetDescendants()) do
-        if obj:IsA("Model") or obj:IsA("BasePart") then
-            local n = obj.Name:lower()
-            if n:find("tree") or n:find("rock") or n:find("house")
-            or n:find("building") or n:find("bush")
-            or n:find("decor") or n:find("prop") then
-                if not n:find("ground")
-                and not n:find("terrain")
-                and not n:find("water")
-                and not n:find("sea") then
-                    pcall(function() obj:Destroy() end)
+        if obj:IsA("BasePart") and not obj:IsDescendantOf(Character) then
+            local n = string.lower(obj.Name)
+            for _, k in ipairs(DECOR_KEYWORDS) do
+                if string.find(n, k) then
+                    obj.Transparency = 1
+                    obj.CanCollide = false
+                    obj.CastShadow = false
+                    break
                 end
             end
         end
@@ -44,135 +64,109 @@ local function ClearDecorations()
 end
 
 --------------------------------------------------
--- 2. GRAY GROUND + SEA
+-- GRAY MAP (SAFE)
 --------------------------------------------------
-local function GrayGroundAndSea()
-    local Terrain = Workspace:FindFirstChildOfClass("Terrain")
-    if not Terrain then return end
+local GRAY = Color3.fromRGB(128,128,128)
 
-    local GRAY = Color3.fromRGB(128,128,128)
-
-    for _, m in ipairs(Enum.Material:GetEnumItems()) do
-        pcall(function()
-            Terrain:SetMaterialColor(m, GRAY)
-        end)
-    end
-
-    Terrain.WaterTransparency = 1
-    Terrain.WaterColor = GRAY
-    Terrain.WaterWaveSize = 0
-    Terrain.WaterWaveSpeed = 0
-
-    for _, p in ipairs(Workspace:GetDescendants()) do
-        if p:IsA("BasePart") and not p:IsDescendantOf(Character) then
-            p.Color = GRAY
-            p.Material = Enum.Material.Concrete
-        end
+local function GrayMap()
+    local terrain = Workspace:FindFirstChildOfClass("Terrain")
+    if terrain then
+        terrain.WaterTransparency = 1
+        terrain.WaterColor = GRAY
+        terrain.WaterWaveSize = 0
+        terrain.WaterWaveSpeed = 0
     end
 end
 
 --------------------------------------------------
--- 3. REMOVE 100% EFFECTS (ANTI LAG - FINAL)
+-- EFFECT FILTER (ANTI CONFLICT)
 --------------------------------------------------
-local EffectClasses = {
+local EFFECT_TYPES = {
     ParticleEmitter = true,
-    Beam = true,
     Trail = true,
-    Smoke = true,
+    Beam = true,
     Fire = true,
+    Smoke = true,
     Sparkles = true,
-    Explosion = true,
-    Sound = true,
     PointLight = true,
-    SurfaceLight = true,
-    SpotLight = true
+    SpotLight = true,
+    SurfaceLight = true
 }
 
-local function DisableEffect(obj)
-    if not EffectClasses[obj.ClassName] then return end
-    pcall(function()
-        if obj:IsA("ParticleEmitter") then
-            obj.Enabled = false
-        elseif obj:IsA("Beam") or obj:IsA("Trail") then
-            obj.Enabled = false
-        elseif obj:IsA("Sound") then
-            obj.Volume = 0
-            obj:Stop()
-        elseif obj:IsA("Explosion") then
-            obj.BlastPressure = 0
-            obj.BlastRadius = 0
-        elseif obj:IsA("Light") then
-            obj.Enabled = false
+local function SafeDisableEffect(obj)
+    if obj:IsDescendantOf(Character) then return end
+    if obj:IsDescendantOf(LP.Backpack) then return end
+    if obj:IsDescendantOf(Character:FindFirstChildOfClass("Tool") or Instance.new("Folder")) then
+        return
+    end
+
+    if obj:IsA("ParticleEmitter") then
+        obj.Enabled = false
+        obj.Rate = 0
+    elseif obj:IsA("Trail") or obj:IsA("Beam") then
+        obj.Enabled = false
+    elseif obj:IsA("Light") then
+        obj.Enabled = false
+    end
+end
+
+local function RemoveEffectsSafe()
+    for _, obj in ipairs(Workspace:GetDescendants()) do
+        if EFFECT_TYPES[obj.ClassName] then
+            SafeDisableEffect(obj)
         end
-    end)
-end
+    end
 
--- xử lý hiệu ứng đã tồn tại (CHỈ 1 LẦN)
-for _, v in ipairs(Workspace:GetDescendants()) do
-    DisableEffect(v)
+    Lighting.GlobalShadows = false
+    Lighting.FogEnd = 1e9
 end
-
--- xử lý hiệu ứng spawn sau này (KHÔNG LOOP)
-Workspace.DescendantAdded:Connect(function(v)
-    DisableEffect(v)
-end)
 
 --------------------------------------------------
--- 4. FIX CDK Z SPIN
+-- CDK Z FIX (ONLY WHEN USING)
 --------------------------------------------------
 RunService.Heartbeat:Connect(function()
+    if not Character or not RootPart or not Humanoid then return end
+
     local tool = Character:FindFirstChildOfClass("Tool")
     if tool and tool.Name:lower():find("katana") then
         Humanoid.AutoRotate = true
         Humanoid.PlatformStand = false
-
-        for _, v in ipairs(RootPart:GetChildren()) do
-            if v:IsA("BodyGyro")
-            or v:IsA("BodyAngularVelocity")
-            or v:IsA("AlignOrientation") then
-                v:Destroy()
-            end
-        end
-
         RootPart.AssemblyAngularVelocity = Vector3.zero
     end
 end)
 
 --------------------------------------------------
--- 5. FIX MOVEMENT STUTTER
+-- MOVEMENT FIX (LIGHT MODE)
 --------------------------------------------------
-RunService.Heartbeat:Connect(function()
-    local dir = Humanoid.MoveDirection
-    if dir.Magnitude > 0 then
-        local vel = RootPart.AssemblyLinearVelocity
-        RootPart.AssemblyLinearVelocity = Vector3.new(
-            dir.X * Humanoid.WalkSpeed,
-            vel.Y,
-            dir.Z * Humanoid.WalkSpeed
-        )
+RunService.Stepped:Connect(function()
+    if not RootPart or not Humanoid then return end
+    if Humanoid.MoveDirection.Magnitude > 0 then
+        RootPart:SetNetworkOwner(LP)
     end
 end)
 
 --------------------------------------------------
--- 6. FIX INVENTORY
+-- INVENTORY FIX (SAFE CALL)
 --------------------------------------------------
-pcall(function()
-    ReplicatedStorage.Remotes.CommF_:InvokeServer("RefreshInventory")
+task.spawn(function()
+    task.wait(3)
+    pcall(function()
+        ReplicatedStorage.Remotes.CommF_:InvokeServer("RefreshInventory")
+    end)
 end)
 
 --------------------------------------------------
--- INIT
+-- START
 --------------------------------------------------
-ClearDecorations()
-GrayGroundAndSea()
+SetNetOwner()
+ClearDecor()
+GrayMap()
+RemoveEffectsSafe()
 
-LocalPlayer.CharacterAdded:Connect(function(c)
-    Character = c
-    Humanoid = c:WaitForChild("Humanoid")
-    RootPart = c:WaitForChild("HumanoidRootPart")
-    task.wait(1)
-    ClearDecorations()
-    GrayGroundAndSea()
+task.spawn(function()
+    while task.wait(10) do
+        RemoveEffectsSafe()
+    end
 end)
 
-print("BLOX FRUITS FINAL | REMOVE 100% EFFECTS | NO LAG | OK")
+print("Blox Fruits SAFE MODE ✔ No conflict ✔")
