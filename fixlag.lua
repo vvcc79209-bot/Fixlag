@@ -1,44 +1,50 @@
--- SAFE MAP CLEANER (NO TERRAIN DELETE)
--- Remove trees, houses, props
--- KEEP GROUND & ISLAND SAFE
+-- BLOX FRUITS MAP CLEANER (ULTRA SAFE)
+-- WILL NOT DELETE GROUND / ISLANDS
 
 local Workspace = game:GetService("Workspace")
 
-local function isTerrainRelated(obj)
-    if obj:IsA("Terrain") then
-        return true
-    end
-    if obj:FindFirstAncestorOfClass("Terrain") then
-        return true
+-- chỉ xoá các object có tên trang trí
+local REMOVE_NAME = {
+    "tree","palm","bush","leaf","leaves",
+    "house","building","roof","wall",
+    "prop","decor","decoration","fence",
+    "rock","stone","lamp","light"
+}
+
+-- các folder TUYỆT ĐỐI KHÔNG ĐỤNG
+local PROTECTED_FOLDERS = {
+    "Island","Islands","Map","Terrain"
+}
+
+local function isProtected(obj)
+    for _, name in pairs(PROTECTED_FOLDERS) do
+        if obj:FindFirstAncestor(name) then
+            return true
+        end
     end
     return false
 end
 
 local function shouldRemove(obj)
-    -- chỉ xoá Part
     if not (obj:IsA("BasePart") or obj:IsA("MeshPart") or obj:IsA("UnionOperation")) then
         return false
     end
 
-    -- không bao giờ xoá terrain
-    if isTerrainRelated(obj) then
+    -- không bao giờ đụng map / island / terrain
+    if isProtected(obj) then
         return false
     end
 
-    -- không xoá part nhỏ (tránh xoá map nền)
-    if obj.Size.Magnitude < 4 then
-        return false
+    local n = string.lower(obj.Name)
+    for _, k in pairs(REMOVE_NAME) do
+        if string.find(n, k) then
+            return true
+        end
     end
 
-    -- chỉ xoá vật thể cố định
-    if obj.Anchored ~= true then
-        return false
-    end
-
-    return true
+    return false
 end
 
--- remove existing map props
 for _, v in ipairs(Workspace:GetDescendants()) do
     if shouldRemove(v) then
         pcall(function()
@@ -46,13 +52,3 @@ for _, v in ipairs(Workspace:GetDescendants()) do
         end)
     end
 end
-
--- auto remove new loaded props
-Workspace.DescendantAdded:Connect(function(v)
-    task.wait(0.2)
-    if shouldRemove(v) then
-        pcall(function()
-            v:Destroy()
-        end)
-    end
-end)
