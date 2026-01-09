@@ -1,27 +1,53 @@
--- EXTREME LOW LAG EFFECT BLOCKER
--- ONLY BLOCK PARTICLE (MAIN LAG SOURCE)
+-- REMOVE ~90% SKILL EFFECTS (BALANCED MODE)
+-- FRUIT | MELEE | SWORD | GUN | BASIC ATTACK
+-- KEEP GAME STABLE | LOW LAG
 
 local Workspace = game:GetService("Workspace")
 
-local function blockParticle(obj)
-	if obj.ClassName ~= "ParticleEmitter" then return end
+-- Class xử lý
+local REDUCE = {
+	ParticleEmitter = true,
+	Beam = true,
+	Trail = true,
+	Sound = true,
+	PointLight = true,
+	SpotLight = true,
+	SurfaceLight = true
+}
+
+local function reduceEffect(obj)
+	if not REDUCE[obj.ClassName] then return end
 
 	pcall(function()
-		obj.Enabled = false
-		obj.Rate = 0
-		obj.Lifetime = NumberRange.new(0)
-		obj.Speed = NumberRange.new(0)
-		obj.Size = NumberSequence.new(0)
-		obj.Transparency = NumberSequence.new(1)
+		if obj:IsA("ParticleEmitter") then
+			-- giữ lại 1 ít để còn nhìn chiêu
+			obj.Rate = obj.Rate * 0.1
+			obj.Lifetime = NumberRange.new(
+				obj.Lifetime.Min * 0.3,
+				obj.Lifetime.Max * 0.3
+			)
+
+		elseif obj:IsA("Beam") or obj:IsA("Trail") then
+			obj.Enabled = false
+
+		elseif obj:IsA("Sound") then
+			obj.Volume = obj.Volume * 0.2
+
+		elseif obj:IsA("PointLight")
+		or obj:IsA("SpotLight")
+		or obj:IsA("SurfaceLight") then
+			obj.Brightness = obj.Brightness * 0.2
+			obj.Range = obj.Range * 0.3
+		end
 	end)
 end
 
--- chỉ xử lý object mới
-Workspace.DescendantAdded:Connect(blockParticle)
+-- xử lý object mới
+Workspace.DescendantAdded:Connect(reduceEffect)
 
--- dọn ban đầu 1 lần
+-- dọn ban đầu (1 lần)
 for _, v in ipairs(Workspace:GetDescendants()) do
-	blockParticle(v)
+	reduceEffect(v)
 end
 
-print("EXTREME LOW PARTICLE MODE ENABLED")
+print("90% EFFECT REDUCTION ENABLED")
