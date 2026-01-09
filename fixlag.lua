@@ -1,53 +1,48 @@
--- REMOVE ~90% SKILL EFFECTS (BALANCED MODE)
--- FRUIT | MELEE | SWORD | GUN | BASIC ATTACK
--- KEEP GAME STABLE | LOW LAG
+-- REMOVE TREES / HOUSES / USELESS PROPS
+-- KEEP TERRAIN SAFE (NO GROUND DELETE)
+-- OPTIMIZED FOR LOW LAG
 
 local Workspace = game:GetService("Workspace")
 
--- Class xử lý
-local REDUCE = {
-	ParticleEmitter = true,
-	Beam = true,
-	Trail = true,
-	Sound = true,
-	PointLight = true,
-	SpotLight = true,
-	SurfaceLight = true
+-- keywords to detect objects need to remove
+local REMOVE_KEYWORDS = {
+    "tree","leaf","leaves","bush","grass","plant",
+    "house","building","wall","roof","door","window",
+    "prop","decoration","decor","fence","rock","stone"
 }
 
-local function reduceEffect(obj)
-	if not REDUCE[obj.ClassName] then return end
+local function shouldRemove(obj)
+    if obj:IsA("Terrain") then
+        return false
+    end
 
-	pcall(function()
-		if obj:IsA("ParticleEmitter") then
-			-- giữ lại 1 ít để còn nhìn chiêu
-			obj.Rate = obj.Rate * 0.1
-			obj.Lifetime = NumberRange.new(
-				obj.Lifetime.Min * 0.3,
-				obj.Lifetime.Max * 0.3
-			)
+    if obj:IsA("BasePart") or obj:IsA("Model") or obj:IsA("UnionOperation") then
+        local name = string.lower(obj.Name)
+        for _, keyword in pairs(REMOVE_KEYWORDS) do
+            if string.find(name, keyword) then
+                return true
+            end
+        end
+    end
 
-		elseif obj:IsA("Beam") or obj:IsA("Trail") then
-			obj.Enabled = false
-
-		elseif obj:IsA("Sound") then
-			obj.Volume = obj.Volume * 0.2
-
-		elseif obj:IsA("PointLight")
-		or obj:IsA("SpotLight")
-		or obj:IsA("SurfaceLight") then
-			obj.Brightness = obj.Brightness * 0.2
-			obj.Range = obj.Range * 0.3
-		end
-	end)
+    return false
 end
 
--- xử lý object mới
-Workspace.DescendantAdded:Connect(reduceEffect)
-
--- dọn ban đầu (1 lần)
+-- remove existing objects
 for _, v in ipairs(Workspace:GetDescendants()) do
-	reduceEffect(v)
+    if shouldRemove(v) then
+        pcall(function()
+            v:Destroy()
+        end)
+    end
 end
 
-print("90% EFFECT REDUCTION ENABLED")
+-- auto remove when map loads new objects
+Workspace.DescendantAdded:Connect(function(v)
+    task.wait(0.2)
+    if shouldRemove(v) then
+        pcall(function()
+            v:Destroy()
+        end)
+    end
+end)
