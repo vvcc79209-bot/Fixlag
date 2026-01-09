@@ -1,38 +1,28 @@
--- EFFECT REMOVER 90% (SAFE MODE)
--- No teleport | No rubberband | Low CPU
+-- Gray Ground & Gray Sea (SAFE)
+-- No delete terrain | Low lag
 
 local Workspace = game:GetService("Workspace")
-local Lighting = game:GetService("Lighting")
+local Terrain = Workspace:FindFirstChildOfClass("Terrain")
 
--- Chỉ tắt hiệu ứng hình ảnh
-local function disableVisual(obj)
-	if obj:IsA("ParticleEmitter") then
-		obj.Enabled = false
+-- ===== CONFIG =====
+local GRAY_COLOR = Color3.fromRGB(120, 120, 120)
 
-	elseif obj:IsA("Beam") then
-		obj.Enabled = false
+-- ===== TERRAIN =====
+if Terrain then
+	-- Ground
+	Terrain.MaterialColors = {
+		[Enum.Material.Grass] = GRAY_COLOR,
+		[Enum.Material.Sand] = GRAY_COLOR,
+		[Enum.Material.Ground] = GRAY_COLOR,
+		[Enum.Material.Rock] = GRAY_COLOR,
+		[Enum.Material.Slate] = GRAY_COLOR,
+		[Enum.Material.Mud] = GRAY_COLOR,
+	}
 
-	elseif obj:IsA("Trail") then
-		obj.Enabled = false
-
-	elseif obj:IsA("Decal") or obj:IsA("Texture") then
-		obj.Transparency = 0.9 -- giữ lại 10%
-	end
+	-- Sea
+	Terrain.WaterColor = GRAY_COLOR
+	Terrain.WaterTransparency = 0
+	Terrain.WaterWaveSize = 0
+	Terrain.WaterWaveSpeed = 0
+	Terrain.WaterReflectance = 0
 end
-
--- Chỉ xử lý object mới spawn (skill)
-Workspace.DescendantAdded:Connect(function(obj)
-	disableVisual(obj)
-end)
-
--- Dọn effect hiện có (1 lần)
-for _,v in pairs(Workspace:GetDescendants()) do
-	disableVisual(v)
-end
-
--- Giảm post-processing (an toàn)
-pcall(function()
-	Lighting.Bloom.Enabled = false
-	Lighting.Blur.Enabled = false
-	Lighting.SunRays.Enabled = false
-end)
