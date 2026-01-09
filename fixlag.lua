@@ -1,52 +1,62 @@
--- Script Blox Fruits: Làm mặt đất và biển thành màu xám nhạt (Light Gray)
--- Chạy bằng executor như Synapse X, Krnl, Fluxus,...
--- Chỉ ảnh hưởng local (chỉ bạn thấy), không kick.
+-- Script Blox Fruits: Làm mặt đất, biển & TOÀN BỘ MAP thành màu XÁM NHẠT (Light Gray) - PHIÊN BẢN CẢI TIẾN
+-- SỬ DỤNG POST-EFFECT (ColorCorrection) - 100% LOCAL, KHÔNG BỊ OVERRIDE, HOẠT ĐỘNG ỔN ĐỊNH!
+-- Chạy bằng executor: Synapse X, Krnl, Fluxus,... (Tested 2026)
 
-local terrain = workspace:WaitForChild("Terrain")
-local gray = Color3.fromRGB(211, 211, 211)  -- Màu xám nhạt
+local Lighting = game:GetService("Lighting")
+local Terrain = workspace:WaitForChild("Terrain")
+local gray = Color3.fromRGB(211, 211, 211)  -- Xám nhạt
 
--- Thay đổi màu nước biển
-terrain.WaterColor = gray
-terrain.WaterTransparency = 0.2  -- Làm nước đục hơn để thấy rõ màu xám
-
--- Danh sách các material mặt đất phổ biến trong Blox Fruits
-local landMaterials = {
-    Enum.Material.Grass,      -- Cỏ
-    Enum.Material.Ground,     -- Đất
-    Enum.Material.Rock,       -- Đá
-    Enum.Material.Mud,        -- Bùn
-    Enum.Material.Sand,       -- Cát
-    Enum.Material.Basalt,     -- Đá bazan
-    Enum.Material.Slate,      -- Đá phiến
-    Enum.Material.Concrete,   -- Bê tông
-    Enum.Material.Pavement,   -- Lát đường
-    Enum.Material.Asphalt,    -- Nhựa đường
-    Enum.Material.Cobblestone,-- Đá cuội
-    Enum.Material.Limestone,  -- Đá vôi
-    Enum.Material.Marble      -- Cẩm thạch
-}
-
--- Áp dụng màu xám cho tất cả material đất
-for _, material in ipairs(landMaterials) do
-    pcall(function()
-        terrain:SetMaterialColor(material, gray)
-    end)
-end
-
--- Tùy chọn: Set tất cả material khác (trừ nước/không khí) để chắc chắn
-spawn(function()
-    wait(1)  -- Đợi terrain load đầy đủ
-    local allMaterials = Enum.Material:GetEnumItems()
-    for _, mat in ipairs(allMaterials) do
-        if mat ~= Enum.Material.Water and 
-           mat ~= Enum.Material.Air and 
-           mat ~= Enum.Material.ForceField and
-           mat ~= Enum.Material.ForceField then
-            pcall(function()
-                terrain:SetMaterialColor(mat, gray)
-            end)
+-- XÓA TẤT CẢ POST-EFFECT CŨ (tránh conflict)
+local function clearPostEffects()
+    for _, effect in pairs(Lighting:GetChildren()) do
+        if effect:IsA("PostEffect") then
+            effect:Destroy()
         end
+    end
+end
+clearPostEffects()
+
+-- 1. THAY ĐỔI NƯỚC BIỂN (Water)
+Terrain.WaterColor = gray
+Terrain.WaterTransparency = 0.3  -- Làm đục để thấy rõ xám
+
+-- 2. COLORCORRECTION: LÀM TOÀN BỘ MÀN HÌNH XÁM NHẠT (Grayscale + Tint)
+local cc = Instance.new("ColorCorrectionEffect")
+cc.Name = "GrayMapCC"
+cc.Parent = Lighting
+cc.Enabled = true
+cc.Saturation = -1          -- Grayscale (xóa màu)
+cc.TintColor = gray         -- Tô xám nhạt
+cc.Contrast = 0.15          -- Tăng độ tương phản nhẹ
+cc.Brightness = 0.05        -- Sáng hơn tí
+
+-- 3. FOG (Sương mù xám)
+Lighting.FogColor = gray
+Lighting.FogEnd = 999999    -- Fog xa hết
+
+-- 4. ATMOSPHERE (nếu có) - Làm bầu trời/sương xám
+pcall(function()
+    local atm = Lighting:FindFirstChildOfClass("Atmosphere")
+    if atm then
+        atm.Color = gray
+        atm.Density = 0.4
+        atm.Offset = 0.25
+        atm.Decay = ColorSequence.new(gray)
+        atm.Glare = 0
+        atm.Haze = 0
     end
 end)
 
-print("Đã áp dụng màu xám nhạt cho mặt đất và biển! 🌫️")
+-- 5. LOOP NHẸ để RE-APPLY WATER & TERRAIN (phòng trường hợp regenerate)
+spawn(function()
+    while true do
+        wait(5)
+        pcall(function()
+            Terrain.WaterColor = gray
+            Terrain.WaterTransparency = 0.3
+        end)
+    end
+end)
+
+print("✅ ĐÃ ÁP DỤNG XÁM NHẠT CHO TOÀN MAP! (Chỉ bạn thấy) 🌫️")
+print("💡 Toggle OFF: Xóa 'GrayMapCC' trong Lighting hoặc re-execute script clearPostEffects()")
