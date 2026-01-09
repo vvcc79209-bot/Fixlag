@@ -1,126 +1,95 @@
--- Blox Fruits Lag Fix (NO DELETE GROUND | SAFE)
--- Compatible with other scripts
+-- REMOVE 100% SKILL EFFECTS (FRUIT / MELEE / SWORD / GUN / BASIC ATTACK)
+-- SAFE | NO DAMAGE EDIT | NO HITBOX REMOVE
 
-local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
-local LocalPlayer = Players.LocalPlayer
+local Lighting = game:GetService("Lighting")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
-local GRAY = Color3.fromRGB(125,125,125)
+-- ===== SETTINGS =====
+local REMOVE_PARTICLES = true
+local REMOVE_BEAMS = true
+local REMOVE_TRAILS = true
+local REMOVE_SOUNDS = true
+local REMOVE_LIGHTS = true
+local REMOVE_DECALS = true
 
--- =============================
--- PROTECTED STRUCTURES
--- =============================
-local ProtectedNames = {
-    "Mansion",
-    "Cafe",
-    "Café",
-    "Turtle",
-    "Tortle",
-    "Hydra",
-    "Fortress",
-    "Castle"
-}
+-- ===== FUNCTION =====
+local function removeEffects(obj)
+	if obj:IsA("ParticleEmitter") and REMOVE_PARTICLES then
+		obj.Enabled = false
+		obj:Destroy()
 
-local function IsProtected(obj)
-    local n = obj.Name:lower()
-    for _,k in ipairs(ProtectedNames) do
-        if string.find(n, k:lower()) then
-            return true
-        end
-    end
-    return false
+	elseif obj:IsA("Beam") and REMOVE_BEAMS then
+		obj.Enabled = false
+		obj:Destroy()
+
+	elseif obj:IsA("Trail") and REMOVE_TRAILS then
+		obj.Enabled = false
+		obj:Destroy()
+
+	elseif obj:IsA("Sound") and REMOVE_SOUNDS then
+		obj.Volume = 0
+		obj.Playing = false
+		obj:Destroy()
+
+	elseif (obj:IsA("PointLight") or obj:IsA("SurfaceLight") or obj:IsA("SpotLight")) and REMOVE_LIGHTS then
+		obj.Enabled = false
+		obj:Destroy()
+
+	elseif (obj:IsA("Decal") or obj:IsA("Texture")) and REMOVE_DECALS then
+		obj.Transparency = 1
+		obj:Destroy()
+	end
 end
 
--- =============================
--- REMOVE 100% EFFECTS
--- =============================
-local EffectClasses = {
-    ParticleEmitter = true,
-    Trail = true,
-    Beam = true,
-    Fire = true,
-    Smoke = true,
-    Sparkles = true,
-    Explosion = true,
-    PointLight = true,
-    SurfaceLight = true,
-    SpotLight = true
-}
-
-local function ClearEffects(parent)
-    for _,v in ipairs(parent:GetDescendants()) do
-        if EffectClasses[v.ClassName] then
-            v:Destroy()
-        end
-    end
+-- ===== INITIAL CLEAN =====
+for _, v in ipairs(Workspace:GetDescendants()) do
+	pcall(removeEffects, v)
 end
 
-ClearEffects(Workspace)
+for _, v in ipairs(Lighting:GetDescendants()) do
+	pcall(removeEffects, v)
+end
 
+for _, v in ipairs(ReplicatedStorage:GetDescendants()) do
+	pcall(removeEffects, v)
+end
+
+-- ===== REALTIME CLEAN (NEW EFFECTS) =====
 Workspace.DescendantAdded:Connect(function(v)
-    if EffectClasses[v.ClassName] then
-        task.wait()
-        if v then v:Destroy() end
-    end
+	pcall(removeEffects, v)
 end)
 
--- =============================
--- REMOVE TREES & NORMAL HOUSES
--- (DO NOT TOUCH GROUND)
--- =============================
-for _,obj in ipairs(Workspace:GetChildren()) do
-    if (obj:IsA("Model") or obj:IsA("Folder")) and not IsProtected(obj) then
-        for _,p in ipairs(obj:GetDescendants()) do
-            if p:IsA("Part") or p:IsA("MeshPart") then
-                -- ONLY REMOVE DECORATION
-                if p.Material == Enum.Material.Wood
-                or p.Material == Enum.Material.WoodPlanks
-                or p.Material == Enum.Material.LeafyGrass then
-                    p:Destroy()
-                end
-            end
-        end
-    end
-end
+Lighting.DescendantAdded:Connect(function(v)
+	pcall(removeEffects, v)
+end)
 
--- =============================
--- GRAY LAND & SEA (NO DELETE)
--- =============================
-for _,p in ipairs(Workspace:GetDescendants()) do
-    if p:IsA("Part") or p:IsA("MeshPart") then
+ReplicatedStorage.DescendantAdded:Connect(function(v)
+	pcall(removeEffects, v)
+end)
 
-        -- LAND
-        if p.Material == Enum.Material.Grass
-        or p.Material == Enum.Material.Ground
-        or p.Material == Enum.Material.Sand
-        or p.Material == Enum.Material.Rock then
-            p.Color = GRAY
-            p.Material = Enum.Material.Concrete
-        end
+-- ===== EXTRA: REMOVE EXPLOSION VISUAL =====
+Workspace.ChildAdded:Connect(function(v)
+	if v:IsA("Explosion") then
+		v.BlastPressure = 0
+		v.BlastRadius = 0
+		v.Visible = false
+		task.delay(0, function()
+			v:Destroy()
+		end)
+	end
+end)
 
-        -- SEA
-        if p.Material == Enum.Material.Water then
-            p.Color = GRAY
-            p.Transparency = 0.35
-        end
-    end
-end
+-- ===== FPS STABILIZER =====
+RunService.RenderStepped:Connect(function()
+	for _, v in ipairs(Workspace:GetDescendants()) do
+		if v:IsA("ParticleEmitter") or v:IsA("Beam") or v:IsA("Trail") then
+			pcall(function()
+				v.Enabled = false
+			end)
+		end
+	end
+end)
 
--- =============================
--- CHARACTER EFFECT CLEAN
--- =============================
-local function OnChar(char)
-    ClearEffects(char)
-end
-
-if LocalPlayer.Character then
-    OnChar(LocalPlayer.Character)
-end
-
-LocalPlayer.CharacterAdded:Connect(OnChar)
-
--- =============================
--- FINAL OPTIMIZE
--- =============================
-collectgarbage("collect")
-setfpscap(60)
+print("REMOVE 100% SKILL EFFECTS : ENABLED")
