@@ -1,62 +1,58 @@
--- Blox Fruits Remove Map Props (WORKING VERSION)
--- Remove trees, houses, decorations
--- KEEP TERRAIN SAFE
+-- SAFE MAP CLEANER (NO TERRAIN DELETE)
+-- Remove trees, houses, props
+-- KEEP GROUND & ISLAND SAFE
 
 local Workspace = game:GetService("Workspace")
 
--- folders thường chứa map rác
-local TARGET_FOLDERS = {
-    "Map",
-    "Props",
-    "Decorations",
-    "Environment",
-    "Buildings",
-    "Trees"
-}
-
--- kiểm tra folder theo tên
-local function isTargetFolder(obj)
-    for _, name in pairs(TARGET_FOLDERS) do
-        if string.find(string.lower(obj.Name), string.lower(name)) then
-            return true
-        end
+local function isTerrainRelated(obj)
+    if obj:IsA("Terrain") then
+        return true
+    end
+    if obj:FindFirstAncestorOfClass("Terrain") then
+        return true
     end
     return false
 end
 
--- xoá model/part KHÔNG PHẢI terrain
-local function removeObject(obj)
-    if obj:IsA("Terrain") then return end
+local function shouldRemove(obj)
+    -- chỉ xoá Part
+    if not (obj:IsA("BasePart") or obj:IsA("MeshPart") or obj:IsA("UnionOperation")) then
+        return false
+    end
 
-    if obj:IsA("Model") or obj:IsA("BasePart") or obj:IsA("MeshPart") or obj:IsA("UnionOperation") then
+    -- không bao giờ xoá terrain
+    if isTerrainRelated(obj) then
+        return false
+    end
+
+    -- không xoá part nhỏ (tránh xoá map nền)
+    if obj.Size.Magnitude < 4 then
+        return false
+    end
+
+    -- chỉ xoá vật thể cố định
+    if obj.Anchored ~= true then
+        return false
+    end
+
+    return true
+end
+
+-- remove existing map props
+for _, v in ipairs(Workspace:GetDescendants()) do
+    if shouldRemove(v) then
         pcall(function()
-            obj:Destroy()
+            v:Destroy()
         end)
     end
 end
 
--- vòng 1: xoá theo folder map
-for _, v in pairs(Workspace:GetChildren()) do
-    if isTargetFolder(v) then
-        for _, obj in pairs(v:GetDescendants()) do
-            removeObject(obj)
-        end
-    end
-end
-
--- vòng 2: xoá các part treo ngoài terrain
-for _, v in pairs(Workspace:GetDescendants()) do
-    if v:IsA("BasePart") and not v:IsDescendantOf(Workspace.Terrain) then
-        if v.Anchored == true and v.Size.Magnitude > 8 then
-            removeObject(v)
-        end
-    end
-end
-
--- tự xoá khi map spawn thêm
+-- auto remove new loaded props
 Workspace.DescendantAdded:Connect(function(v)
-    task.wait(0.3)
-    if v:IsA("BasePart") and v.Anchored and not v:IsDescendantOf(Workspace.Terrain) then
-        removeObject(v)
+    task.wait(0.2)
+    if shouldRemove(v) then
+        pcall(function()
+            v:Destroy()
+        end)
     end
 end)
