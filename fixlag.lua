@@ -1,17 +1,16 @@
--- Blox Fruits Extreme Lag Fix (SAFE VERSION)
--- No remote hook | No skill override | Compatible with other scripts
+-- Blox Fruits Lag Fix (NO DELETE GROUND | SAFE)
+-- Compatible with other scripts
 
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
-local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
 
--- =========================
--- SETTINGS
--- =========================
-local GRAY_COLOR = Color3.fromRGB(120,120,120)
+local GRAY = Color3.fromRGB(125,125,125)
 
-local ProtectedKeywords = {
+-- =============================
+-- PROTECTED STRUCTURES
+-- =============================
+local ProtectedNames = {
     "Mansion",
     "Cafe",
     "Café",
@@ -22,113 +21,106 @@ local ProtectedKeywords = {
     "Castle"
 }
 
--- =========================
--- UTILS
--- =========================
 local function IsProtected(obj)
-    local name = obj.Name:lower()
-    for _,k in ipairs(ProtectedKeywords) do
-        if string.find(name, k:lower()) then
+    local n = obj.Name:lower()
+    for _,k in ipairs(ProtectedNames) do
+        if string.find(n, k:lower()) then
             return true
         end
     end
     return false
 end
 
--- =========================
--- REMOVE ALL EFFECTS (100%)
--- =========================
-local function RemoveEffects(parent)
+-- =============================
+-- REMOVE 100% EFFECTS
+-- =============================
+local EffectClasses = {
+    ParticleEmitter = true,
+    Trail = true,
+    Beam = true,
+    Fire = true,
+    Smoke = true,
+    Sparkles = true,
+    Explosion = true,
+    PointLight = true,
+    SurfaceLight = true,
+    SpotLight = true
+}
+
+local function ClearEffects(parent)
     for _,v in ipairs(parent:GetDescendants()) do
-        if v:IsA("ParticleEmitter")
-        or v:IsA("Trail")
-        or v:IsA("Beam")
-        or v:IsA("Fire")
-        or v:IsA("Smoke")
-        or v:IsA("Sparkles")
-        or v:IsA("Explosion")
-        or v:IsA("PointLight")
-        or v:IsA("SurfaceLight")
-        or v:IsA("SpotLight") then
+        if EffectClasses[v.ClassName] then
             v:Destroy()
         end
     end
 end
 
-RemoveEffects(Workspace)
+ClearEffects(Workspace)
 
 Workspace.DescendantAdded:Connect(function(v)
-    if v:IsA("ParticleEmitter")
-    or v:IsA("Trail")
-    or v:IsA("Beam")
-    or v:IsA("Fire")
-    or v:IsA("Smoke")
-    or v:IsA("Sparkles")
-    or v:IsA("Explosion")
-    or v:IsA("PointLight")
-    or v:IsA("SurfaceLight")
-    or v:IsA("SpotLight") then
+    if EffectClasses[v.ClassName] then
         task.wait()
         if v then v:Destroy() end
     end
 end)
 
--- =========================
+-- =============================
 -- REMOVE TREES & NORMAL HOUSES
--- =========================
+-- (DO NOT TOUCH GROUND)
+-- =============================
 for _,obj in ipairs(Workspace:GetChildren()) do
-    if obj:IsA("Model") or obj:IsA("Folder") then
-        if not IsProtected(obj) then
-            for _,p in ipairs(obj:GetDescendants()) do
-                if p:IsA("Part") or p:IsA("MeshPart") then
-                    if p.Material == Enum.Material.Grass
-                    or p.Material == Enum.Material.LeafyGrass
-                    or p.Material == Enum.Material.Wood
-                    or p.Material == Enum.Material.WoodPlanks then
-                        p:Destroy()
-                    end
+    if (obj:IsA("Model") or obj:IsA("Folder")) and not IsProtected(obj) then
+        for _,p in ipairs(obj:GetDescendants()) do
+            if p:IsA("Part") or p:IsA("MeshPart") then
+                -- ONLY REMOVE DECORATION
+                if p.Material == Enum.Material.Wood
+                or p.Material == Enum.Material.WoodPlanks
+                or p.Material == Enum.Material.LeafyGrass then
+                    p:Destroy()
                 end
             end
         end
     end
 end
 
--- =========================
--- GRAY LAND & SEA (SAFE)
--- =========================
-for _,v in ipairs(Workspace:GetDescendants()) do
-    if v:IsA("Part") or v:IsA("MeshPart") then
-        if v.Material == Enum.Material.Grass
-        or v.Material == Enum.Material.Ground
-        or v.Material == Enum.Material.Sand
-        or v.Material == Enum.Material.Rock
-        or v.Material == Enum.Material.Concrete then
-            v.Color = GRAY_COLOR
-            v.Material = Enum.Material.Concrete
+-- =============================
+-- GRAY LAND & SEA (NO DELETE)
+-- =============================
+for _,p in ipairs(Workspace:GetDescendants()) do
+    if p:IsA("Part") or p:IsA("MeshPart") then
+
+        -- LAND
+        if p.Material == Enum.Material.Grass
+        or p.Material == Enum.Material.Ground
+        or p.Material == Enum.Material.Sand
+        or p.Material == Enum.Material.Rock then
+            p.Color = GRAY
+            p.Material = Enum.Material.Concrete
         end
 
-        if v.Material == Enum.Material.Water then
-            v.Color = GRAY_COLOR
-            v.Transparency = 0.35
+        -- SEA
+        if p.Material == Enum.Material.Water then
+            p.Color = GRAY
+            p.Transparency = 0.35
         end
     end
 end
 
--- =========================
+-- =============================
 -- CHARACTER EFFECT CLEAN
--- =========================
-local function OnCharacter(char)
-    RemoveEffects(char)
+-- =============================
+local function OnChar(char)
+    ClearEffects(char)
 end
 
 if LocalPlayer.Character then
-    OnCharacter(LocalPlayer.Character)
+    OnChar(LocalPlayer.Character)
 end
 
-LocalPlayer.CharacterAdded:Connect(OnCharacter)
+LocalPlayer.CharacterAdded:Connect(OnChar)
 
--- =========================
--- FINAL GC BOOST
--- =========================
+-- =============================
+-- FINAL OPTIMIZE
+-- =============================
 collectgarbage("collect")
 setfpscap(60)
