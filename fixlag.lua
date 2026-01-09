@@ -1,70 +1,40 @@
--- REMOVE MAP OBJECTS (OPTIMIZED & SAFE)
--- Remove trees, small houses, decorations, accessories
--- KEEP: terrain, important buildings, spawn, sea, ground
+-- BLOX FRUITS MAP CLEAN (NO RESPAWN)
+-- Hide trees, houses, props (NO Destroy)
 
 local Workspace = game:GetService("Workspace")
 
--- Keywords to remove
-local REMOVE_KEYWORDS = {
-    "tree","bush","grass","leaf","plant",
-    "house","hut","home","building","roof","wall",
-    "decor","decoration","prop","fence","rock",
-    "lamp","pole","sign","statue",
-    "accessory","hat","hair","cape","wing"
-}
+local REMOVE_SIZE = 20 -- objects smaller than this will be hidden
 
--- Keywords to keep (important places)
-local KEEP_KEYWORDS = {
-    "spawn","safe","shop","dealer","npc",
-    "cafe","mansion","castle","fort","factory",
-    "turtle","dungeon","raid","arena"
-}
-
-local function hasKeyword(name, keywords)
-    name = name:lower()
-    for _,k in ipairs(keywords) do
-        if name:find(k) then
-            return true
-        end
-    end
-    return false
-end
-
-local function shouldRemove(obj)
+local function shouldHide(obj)
     if not obj:IsA("BasePart") then return false end
     if obj:IsDescendantOf(Workspace.Terrain) then return false end
+    if obj.Parent and obj.Parent:FindFirstChild("Humanoid") then return false end
 
-    local name = obj.Name
-
-    -- keep important
-    if hasKeyword(name, KEEP_KEYWORDS) then
-        return false
-    end
-
-    -- remove unwanted
-    if hasKeyword(name, REMOVE_KEYWORDS) then
-        return true
-    end
-
-    -- remove small useless parts
-    if obj.Size.Magnitude < 6 then
+    if obj.Size.Magnitude <= REMOVE_SIZE then
         return true
     end
 
     return false
 end
 
--- MAIN CLEAN
+local function hide(obj)
+    obj.Transparency = 1
+    obj.CanCollide = false
+    obj.CastShadow = false
+    obj.Material = Enum.Material.SmoothPlastic
+end
+
+-- Initial clean
 for _,obj in ipairs(Workspace:GetDescendants()) do
-    if shouldRemove(obj) then
-        obj:Destroy()
+    if shouldHide(obj) then
+        hide(obj)
     end
 end
 
--- Auto clean objects spawned later (anti lag)
+-- Anti respawn
 Workspace.DescendantAdded:Connect(function(obj)
-    task.wait(0.2)
-    if shouldRemove(obj) then
-        obj:Destroy()
+    task.wait(0.1)
+    if shouldHide(obj) then
+        hide(obj)
     end
 end)
