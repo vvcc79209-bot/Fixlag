@@ -1,11 +1,10 @@
--- SAFE EFFECT REMOVER 95%
+-- EFFECT REMOVER 90% (SAFE MODE)
 -- No teleport | No rubberband | Low CPU
 
 local Workspace = game:GetService("Workspace")
 local Lighting = game:GetService("Lighting")
-local Debris = game:GetService("Debris")
 
--- Tắt effect thuần hình ảnh
+-- Chỉ tắt hiệu ứng hình ảnh
 local function disableVisual(obj)
 	if obj:IsA("ParticleEmitter") then
 		obj.Enabled = false
@@ -17,21 +16,16 @@ local function disableVisual(obj)
 		obj.Enabled = false
 
 	elseif obj:IsA("Decal") or obj:IsA("Texture") then
-		obj.Transparency = 1
+		obj.Transparency = 0.9 -- giữ lại 10%
 	end
 end
 
--- Chỉ xử lý effect mới spawn (skill)
+-- Chỉ xử lý object mới spawn (skill)
 Workspace.DescendantAdded:Connect(function(obj)
 	disableVisual(obj)
-
-	-- Xoá model effect sau 0.2s (KHÔNG đụng part con)
-	if obj:IsA("Model") and obj.Name:lower():find("effect") then
-		Debris:AddItem(obj, 0.2)
-	end
 end)
 
--- Dọn effect có sẵn (1 lần duy nhất)
+-- Dọn effect hiện có (1 lần)
 for _,v in pairs(Workspace:GetDescendants()) do
 	disableVisual(v)
 end
