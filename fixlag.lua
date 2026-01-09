@@ -1,24 +1,29 @@
--- BLOX FRUITS MAP CLEANER (ULTRA SAFE)
--- WILL NOT DELETE GROUND / ISLANDS
+-- REMOVE MAP OBJECTS (OPTIMIZED & SAFE)
+-- Remove trees, small houses, decorations, accessories
+-- KEEP: terrain, important buildings, spawn, sea, ground
 
 local Workspace = game:GetService("Workspace")
 
--- chỉ xoá các object có tên trang trí
-local REMOVE_NAME = {
-    "tree","palm","bush","leaf","leaves",
-    "house","building","roof","wall",
-    "prop","decor","decoration","fence",
-    "rock","stone","lamp","light"
+-- Keywords to remove
+local REMOVE_KEYWORDS = {
+    "tree","bush","grass","leaf","plant",
+    "house","hut","home","building","roof","wall",
+    "decor","decoration","prop","fence","rock",
+    "lamp","pole","sign","statue",
+    "accessory","hat","hair","cape","wing"
 }
 
--- các folder TUYỆT ĐỐI KHÔNG ĐỤNG
-local PROTECTED_FOLDERS = {
-    "Island","Islands","Map","Terrain"
+-- Keywords to keep (important places)
+local KEEP_KEYWORDS = {
+    "spawn","safe","shop","dealer","npc",
+    "cafe","mansion","castle","fort","factory",
+    "turtle","dungeon","raid","arena"
 }
 
-local function isProtected(obj)
-    for _, name in pairs(PROTECTED_FOLDERS) do
-        if obj:FindFirstAncestor(name) then
+local function hasKeyword(name, keywords)
+    name = name:lower()
+    for _,k in ipairs(keywords) do
+        if name:find(k) then
             return true
         end
     end
@@ -26,29 +31,40 @@ local function isProtected(obj)
 end
 
 local function shouldRemove(obj)
-    if not (obj:IsA("BasePart") or obj:IsA("MeshPart") or obj:IsA("UnionOperation")) then
+    if not obj:IsA("BasePart") then return false end
+    if obj:IsDescendantOf(Workspace.Terrain) then return false end
+
+    local name = obj.Name
+
+    -- keep important
+    if hasKeyword(name, KEEP_KEYWORDS) then
         return false
     end
 
-    -- không bao giờ đụng map / island / terrain
-    if isProtected(obj) then
-        return false
+    -- remove unwanted
+    if hasKeyword(name, REMOVE_KEYWORDS) then
+        return true
     end
 
-    local n = string.lower(obj.Name)
-    for _, k in pairs(REMOVE_NAME) do
-        if string.find(n, k) then
-            return true
-        end
+    -- remove small useless parts
+    if obj.Size.Magnitude < 6 then
+        return true
     end
 
     return false
 end
 
-for _, v in ipairs(Workspace:GetDescendants()) do
-    if shouldRemove(v) then
-        pcall(function()
-            v:Destroy()
-        end)
+-- MAIN CLEAN
+for _,obj in ipairs(Workspace:GetDescendants()) do
+    if shouldRemove(obj) then
+        obj:Destroy()
     end
 end
+
+-- Auto clean objects spawned later (anti lag)
+Workspace.DescendantAdded:Connect(function(obj)
+    task.wait(0.2)
+    if shouldRemove(obj) then
+        obj:Destroy()
+    end
+end)
