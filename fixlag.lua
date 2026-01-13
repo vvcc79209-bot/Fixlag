@@ -1,62 +1,88 @@
--- Script Blox Fruits: Làm mặt đất, biển & TOÀN BỘ MAP thành màu XÁM NHẠT (Light Gray) - PHIÊN BẢN CẢI TIẾN
--- SỬ DỤNG POST-EFFECT (ColorCorrection) - 100% LOCAL, KHÔNG BỊ OVERRIDE, HOẠT ĐỘNG ỔN ĐỊNH!
--- Chạy bằng executor: Synapse X, Krnl, Fluxus,... (Tested 2026)
+-- Reduce 85% Melee/Gun/Sword Normal Attack + Some Skill VFX (by ~Gs request)
+-- Giảm ~85% hiệu ứng particle, trail, beam của đánh thường và một số skill
 
-local Lighting = game:GetService("Lighting")
-local Terrain = workspace:WaitForChild("Terrain")
-local gray = Color3.fromRGB(211, 211, 211)  -- Xám nhạt
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
 
--- XÓA TẤT CẢ POST-EFFECT CŨ (tránh conflict)
-local function clearPostEffects()
-    for _, effect in pairs(Lighting:GetChildren()) do
-        if effect:IsA("PostEffect") then
-            effect:Destroy()
+local ReductionPercent = 0.15  -- 15% = giữ lại 15% → giảm 85%
+
+-- Danh sách các effect thường gặp khi đánh thường / skill
+local VFX_Keywords = {
+    "Slash", "Hit", "Impact", "Particle", "Trail", "Beam", "Spark", "Smoke",
+    "SwordSlash", "GunShot", "Muzzle", "Explosion", "Wave", "Aura", "Electric",
+    "Fire", "Ice", "Acid", "Dark", "Light", "Blood", "Cut", "Stab"
+}
+
+local function ReduceVFX(part)
+    if not part:IsA("BasePart") and not part:IsA("Model") then return end
+    
+    for _, obj in pairs(part:GetDescendants()) do
+        if obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Beam") then
+            -- Kiểm tra xem có phải effect đánh thường/skill không
+            local shouldReduce = false
+            local name = obj.Name:lower()
+            
+            for _, keyword in pairs(VFX_Keywords) do
+                if name:find(keyword:lower()) then
+                    shouldReduce = true
+                    break
+                end
+            end
+            
+            if shouldReduce then
+                if obj:IsA("ParticleEmitter") then
+                    obj.Rate = obj.Rate * ReductionPercent
+                    obj.Lifetime = NumberRange.new(obj.Lifetime.Min * ReductionPercent, obj.Lifetime.Max * ReductionPercent)
+                    obj.Speed = NumberRange.new(obj.Speed.Min * ReductionPercent, obj.Speed.Max * ReductionPercent)
+                    obj.Size = NumberSequence.new({
+                        NumberSequenceKeypoint.new(0, obj.Size.Keypoints[1].Value * ReductionPercent),
+                        NumberSequenceKeypoint.new(1, obj.Size.Keypoints[#obj.Size.Keypoints].Value * ReductionPercent)
+                    })
+                elseif obj:IsA("Trail") then
+                    obj.Lifetime = obj.Lifetime * ReductionPercent
+                    obj.MinLength = obj.MinLength * ReductionPercent
+                    obj.WidthScale = NumberSequence.new({
+                        NumberSequenceKeypoint.new(0, obj.WidthScale.Keypoints[1].Value * ReductionPercent),
+                        NumberSequenceKeypoint.new(1, obj.WidthScale.Keypoints[#obj.WidthScale.Keypoints].Value * ReductionPercent)
+                    })
+                elseif obj:IsA("Beam") then
+                    obj.Width0 = obj.Width0 * ReductionPercent
+                    obj.Width1 = obj.Width1 * ReductionPercent
+                end
+            end
         end
     end
 end
-clearPostEffects()
 
--- 1. THAY ĐỔI NƯỚC BIỂN (Water)
-Terrain.WaterColor = gray
-Terrain.WaterTransparency = 0.3  -- Làm đục để thấy rõ xám
-
--- 2. COLORCORRECTION: LÀM TOÀN BỘ MÀN HÌNH XÁM NHẠT (Grayscale + Tint)
-local cc = Instance.new("ColorCorrectionEffect")
-cc.Name = "GrayMapCC"
-cc.Parent = Lighting
-cc.Enabled = true
-cc.Saturation = -1          -- Grayscale (xóa màu)
-cc.TintColor = gray         -- Tô xám nhạt
-cc.Contrast = 0.15          -- Tăng độ tương phản nhẹ
-cc.Brightness = 0.05        -- Sáng hơn tí
-
--- 3. FOG (Sương mù xám)
-Lighting.FogColor = gray
-Lighting.FogEnd = 999999    -- Fog xa hết
-
--- 4. ATMOSPHERE (nếu có) - Làm bầu trời/sương xám
-pcall(function()
-    local atm = Lighting:FindFirstChildOfClass("Atmosphere")
-    if atm then
-        atm.Color = gray
-        atm.Density = 0.4
-        atm.Offset = 0.25
-        atm.Decay = ColorSequence.new(gray)
-        atm.Glare = 0
-        atm.Haze = 0
+-- Theo dõi các combat mới (đánh thường + skill)
+local connection
+connection = RunService.Heartbeat:Connect(function()
+    if not LocalPlayer.Character then return end
+    
+    local char = LocalPlayer.Character
+    local humanoid = char:FindFirstChildOfClass("Humanoid")
+    
+    if humanoid then
+        -- Theo dõi các phần vừa spawn ra (thường là hitbox + vfx)
+        for _, part in pairs(workspace:GetChildren()) do
+            if part:IsA("Part") or part:IsA("MeshPart") then
+                if (part.Name:find("Hit") or part.Name:find("Slash") or part.Name:find("Effect")) 
+                and (part.Position - char.HumanoidRootPart.Position).Magnitude < 50 then
+                    
+                    ReduceVFX(part)
+                end
+            end
+        end
+        
+        -- Giảm luôn các effect trên nhân vật
+        ReduceVFX(char)
     end
 end)
 
--- 5. LOOP NHẸ để RE-APPLY WATER & TERRAIN (phòng trường hợp regenerate)
-spawn(function()
-    while true do
-        wait(5)
-        pcall(function()
-            Terrain.WaterColor = gray
-            Terrain.WaterTransparency = 0.3
-        end)
-    end
+-- Clean up khi disconnect
+game:BindToClose(function()
+    if connection then connection:Disconnect() end
 end)
 
-print("✅ ĐÃ ÁP DỤNG XÁM NHẠT CHO TOÀN MAP! (Chỉ bạn thấy) 🌫️")
-print("💡 Toggle OFF: Xóa 'GrayMapCC' trong Lighting hoặc re-execute script clearPostEffects()")
+print("Đã kích hoạt giảm 85% hiệu ứng đánh thường Melee/Gun/Sword + một số skill!")
