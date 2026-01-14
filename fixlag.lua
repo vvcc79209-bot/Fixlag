@@ -1,77 +1,100 @@
--- Blox Fruits Script: Xóa 100% Hiệu Ứng Skill Trái Ác Quỷ, Võ, Kiếm, Súng & Đánh Thường
--- Lag Reducer + No Effects 100% (Hoạt động mượt mà, FPS cao)
--- Copy toàn bộ code này paste vào Executor (Synapse X, Krnl, Fluxus, v.v.)
--- Không key, free, update 2026
+-- REMOVE 90% EFFECTS (Blox Fruits - SAFE)
+-- Fruit / Melee / Sword / Gun / Basic Attack
+-- No skill break | No hitbox loss
 
-local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
-local Lighting = game:GetService("Lighting")
+local Workspace = game:GetService("Workspace")
 local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
 
--- Cài đặt chất lượng thấp để tối ưu FPS
-settings().Rendering.QualityLevel = Enum.SavedQualitySetting.QualityLevel1
-Lighting.GlobalShadows = false
-Lighting.FogEnd = 9e9
-Lighting.Brightness = 1
+--------------------------------------------------
+-- CONFIG
+--------------------------------------------------
+local REMOVE_PARTICLE = true
+local REMOVE_TRAIL = true
+local REMOVE_BEAM = true
+local REMOVE_DECAL = true
+local REMOVE_EFFECT_MODEL = true
 
--- Hàm xóa hiệu ứng (Particles, Trails, Beams, Lights, v.v.)
-local function ClearEffects()
-    for _, obj in pairs(Workspace:GetDescendants()) do
-        pcall(function()
-            -- Xóa tất cả hiệu ứng visual từ skill
-            if obj:IsA("ParticleEmitter") or 
-               obj:IsA("Trail") or 
-               obj:IsA("Beam") or 
-               obj:IsA("Fire") or 
-               obj:IsA("Smoke") or 
-               obj:IsA("Sparkles") or 
-               obj:IsA("Explosion") then
-                obj.Enabled = false
-                obj.Lifetime = NumberSequence.new(0)
-                -- obj:Destroy() -- Uncomment nếu muốn destroy hoàn toàn (mạnh hơn nhưng có thể gây bug nhỏ)
-            elseif obj:IsA("PointLight") or 
-                   obj:IsA("SpotLight") or 
-                   obj:IsA("SurfaceLight") then
-                obj.Brightness = 0
-                obj.Range = 0
-            elseif obj:IsA("Attachment") and #obj:GetChildren() == 0 then
-                obj:Destroy()
-            end
-        end)
-    end
+--------------------------------------------------
+-- SAFE CHECK
+--------------------------------------------------
+local function IsImportant(obj)
+    if not obj then return false end
+
+    local name = obj.Name:lower()
+
+    -- giữ lại mấy thứ quan trọng
+    if name:find("hitbox") then return true end
+    if name:find("damage") then return true end
+    if name:find("hurt") then return true end
+    if name:find("root") then return true end
+    if obj:IsA("Humanoid") then return true end
+
+    return false
 end
 
--- Chạy liên tục mỗi frame để xóa effects mới spawn từ skill
-RunService.Heartbeat:Connect(ClearEffects)
+--------------------------------------------------
+-- REMOVE EFFECT
+--------------------------------------------------
+local function ClearEffect(obj)
+    if IsImportant(obj) then return end
 
--- Clear ban đầu
-ClearEffects()
-
--- Tùy chọn: Xóa textures/decals để FPS cao hơn (uncomment nếu máy yếu)
---[[
-spawn(function()
-    while true do
-        wait(5)
-        for _, obj in pairs(Workspace:GetDescendants()) do
-            pcall(function()
-                if obj:IsA("Decal") or obj:IsA("Texture") then
-                    obj.Transparency = 1
-                end
-            end)
+    pcall(function()
+        if REMOVE_PARTICLE and obj:IsA("ParticleEmitter") then
+            obj.Enabled = false
+            obj:Destroy()
+        elseif REMOVE_TRAIL and obj:IsA("Trail") then
+            obj.Enabled = false
+            obj:Destroy()
+        elseif REMOVE_BEAM and obj:IsA("Beam") then
+            obj:Destroy()
+        elseif REMOVE_DECAL and (obj:IsA("Decal") or obj:IsA("Texture")) then
+            obj.Transparency = 1
+        elseif REMOVE_EFFECT_MODEL and obj:IsA("Model") then
+            local n = obj.Name:lower()
+            if n:find("effect") or n:find("fx") or n:find("vfx") then
+                obj:Destroy()
+            end
         end
-    end
+    end)
+end
+
+--------------------------------------------------
+-- INITIAL CLEAN
+--------------------------------------------------
+for _,v in ipairs(Workspace:GetDescendants()) do
+    ClearEffect(v)
+end
+
+--------------------------------------------------
+-- REALTIME CLEAN (ANTI LAG)
+--------------------------------------------------
+Workspace.DescendantAdded:Connect(function(obj)
+    task.wait(0.05)
+    ClearEffect(obj)
 end)
---]]
 
-print("✅ Script No Effects Blox Fruits đã load! 100% xóa hiệu ứng skill (trái, võ, kiếm, súng, đánh thường)")
-print("FPS sẽ tăng đáng kể, game mượt hơn!")
+--------------------------------------------------
+-- CHARACTER EFFECT CLEAN
+--------------------------------------------------
+local function OnCharacter(char)
+    for _,v in ipairs(char:GetDescendants()) do
+        ClearEffect(v)
+    end
 
--- FullBright tùy chọn (bật nếu muốn sáng hơn)
---[[
-Lighting.FogColor = Color3.new(1,1,1)
-Lighting.FogStart = math.huge
-Lighting.Ambient = Color3.new(1,1,1)
-Lighting.OutdoorAmbient = Color3.new(1,1,1)
-Lighting.Brightness = 2
---]]
+    char.DescendantAdded:Connect(function(obj)
+        task.wait(0.05)
+        ClearEffect(obj)
+    end)
+end
+
+local player = Players.LocalPlayer
+if player.Character then
+    OnCharacter(player.Character)
+end
+
+player.CharacterAdded:Connect(OnCharacter)
+
+--------------------------------------------------
+print("✅ REMOVE 90% EFFECTS ENABLED | LOW LAG MODE")
+--------------------------------------------------
