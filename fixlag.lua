@@ -1,96 +1,72 @@
---[[ 
-    BLOX FRUITS FIX LAG VFX
-    Xoá hiệu ứng: Trái - Kiếm - Súng - Đánh thường
-    Tác dụng: giảm lag cực mạnh (client-side)
-]]
+-- Blox Fruits - Remove 90% Effects (SAFE & OPTIMIZED)
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local player = Players.LocalPlayer
+local Workspace = game:GetService("Workspace")
 
--- Danh sách class hiệu ứng cần xoá
-local REMOVE_CLASSES = {
-    "ParticleEmitter",
-    "Trail",
-    "Beam",
-    "Explosion",
-    "Fire",
-    "Smoke",
-    "Sparkles",
-    "Highlight",
-    "PointLight",
-    "SurfaceLight",
-    "SpotLight"
+local LocalPlayer = Players.LocalPlayer
+
+-- Danh sách tên hiệu ứng cần xoá (lag nặng)
+local EFFECT_KEYWORDS = {
+    "effect","fx","vfx","particle","trail","smoke","fire",
+    "explosion","shock","spark","glow","ring","wave","beam"
 }
 
--- Hàm kiểm tra class
+-- Kiểm tra có phải hiệu ứng không
 local function isEffect(obj)
-    for _, class in ipairs(REMOVE_CLASSES) do
-        if obj:IsA(class) then
-            return true
+    if obj:IsA("ParticleEmitter")
+    or obj:IsA("Trail")
+    or obj:IsA("Beam") then
+        return true
+    end
+
+    if obj:IsA("BasePart") then
+        local name = obj.Name:lower()
+        for _,k in ipairs(EFFECT_KEYWORDS) do
+            if name:find(k) then
+                return true
+            end
         end
     end
+
     return false
 end
 
--- Xoá / vô hiệu hoá hiệu ứng
-local function removeEffect(obj)
-    if isEffect(obj) then
-        pcall(function()
-            obj.Enabled = false
-            obj:Destroy()
-        end)
-    end
-
-    -- Xoá mesh / decal skill
-    if obj:IsA("Decal") or obj:IsA("Texture") then
-        pcall(function()
-            obj:Destroy()
-        end)
-    end
-
-    -- Làm trong suốt hitbox / model skill
-    if obj:IsA("BasePart") then
-        pcall(function()
-            obj.Transparency = 1
-            obj.Material = Enum.Material.Plastic
-            obj.CastShadow = false
-        end)
-    end
-
-    -- Giảm âm thanh skill
-    if obj:IsA("Sound") then
-        pcall(function()
-            obj.Volume = 0
-            obj:Destroy()
-        end)
+-- Xoá hiệu ứng trong 1 model
+local function clean(model)
+    for _,v in ipairs(model:GetDescendants()) do
+        if isEffect(v) then
+            pcall(function()
+                if v:IsA("BasePart") then
+                    v.Transparency = 1
+                    v.CanCollide = false
+                else
+                    v.Enabled = false
+                end
+            end)
+        end
     end
 end
 
--- Quét toàn bộ game lúc bật script
-for _, v in ipairs(game:GetDescendants()) do
-    removeEffect(v)
+-- Xoá hiệu ứng nhân vật
+local function onCharacter(char)
+    task.wait(1)
+    clean(char)
 end
 
--- Tự động xoá hiệu ứng mới sinh ra
-game.DescendantAdded:Connect(function(obj)
-    task.wait()
-    removeEffect(obj)
+-- Nhân vật
+if LocalPlayer.Character then
+    onCharacter(LocalPlayer.Character)
+end
+LocalPlayer.CharacterAdded:Connect(onCharacter)
+
+-- Xoá hiệu ứng skill spawn ra (nhẹ, không loop liên tục)
+Workspace.ChildAdded:Connect(function(obj)
+    task.delay(0.3,function()
+        if obj:IsA("Model") or obj:IsA("Folder") then
+            clean(obj)
+        end
+    end)
 end)
 
--- Tối ưu thêm: giảm render
-RunService:Set3dRenderingEnabled(true)
-settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
-
--- Fix lag nhân vật
-if player.Character then
-    for _, v in ipairs(player.Character:GetDescendants()) do
-        removeEffect(v)
-    end
-end
-
-player.CharacterAdded:Connect(function(char)
-    char.DescendantAdded:Connect(removeEffect)
-end)
-
-print("✅ FIX LAG BLOX FRUITS: Đã xoá tối đa hiệu ứng!")
+print("✅ Remove ~90% Effects loaded (SAFE)")
