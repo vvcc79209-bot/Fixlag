@@ -1,65 +1,88 @@
--- Blox Fruits: Hide Skill & Normal Attack Effects ONLY
--- Giữ map, nhà cửa, cây cối, NPC
+-- Blox Fruits: Hide Visual Effects + Mute Skill Sounds
+-- Safe: No conflict | No sea/water bug | Keep movement & swimming
 
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
--- Hàm kiểm tra: có phải part của map không?
-local function IsMapPart(obj)
-    if not obj:IsA("BasePart") then return false end
-    -- Những thứ thuộc nhân vật, tool, effect, hoặc mới spawn thường là skill
-    if obj:IsDescendantOf(LocalPlayer.Character) then return false end
-    if obj.Parent and obj.Parent:IsA("Tool") then return false end
-    if obj.Name:lower():find("effect") then return false end
-    return true
+-- Các class chỉ dùng cho hiệu ứng hình ảnh
+local EffectClasses = {
+    ParticleEmitter = true,
+    Beam = true,
+    Trail = true,
+    Fire = true,
+    Smoke = true,
+    Sparkles = true,
+    Highlight = true
+}
+
+-- Kiểm tra: có phải hiệu ứng hình ảnh không
+local function IsVisualEffect(obj)
+    if EffectClasses[obj.ClassName] then
+        return true
+    end
+    if obj:IsA("BillboardGui") or obj:IsA("SurfaceGui") then
+        return true
+    end
+    if obj:IsA("Decal") or obj:IsA("Texture") then
+        return true
+    end
+    return false
 end
 
--- Hàm ẩn hiệu ứng
-local function HideSkill(obj)
-    -- Xoá toàn bộ hiệu ứng hình ảnh
-    if obj:IsA("ParticleEmitter") or obj:IsA("Beam") or obj:IsA("Trail")
-    or obj:IsA("Fire") or obj:IsA("Smoke") or obj:IsA("Sparkles") then
-        obj:Destroy()
+-- Kiểm tra: có phải âm thanh của skill/đòn đánh không
+local function IsSkillSound(obj)
+    if not obj:IsA("Sound") then return false end
 
-    -- Xoá texture / decal của skill
-    elseif obj:IsA("Decal") or obj:IsA("Texture") then
-        obj:Destroy()
+    -- Không tắt nhạc nền / UI chung
+    local parent = obj.Parent
+    if parent and (parent:IsA("GuiObject") or parent:IsDescendantOf(LocalPlayer:WaitForChild("PlayerGui"))) then
+        return false
+    end
 
-    -- Xoá viền sáng, GUI gắn vào skill
-    elseif obj:IsA("Highlight") or obj:IsA("BillboardGui") or obj:IsA("SurfaceGui") then
-        obj:Destroy()
+    -- Âm thanh gắn vào Tool, Effect, Part sinh ra khi đánh
+    if parent and (parent:IsA("Tool") or parent:IsA("BasePart") or parent.Name:lower():find("effect")) then
+        return true
+    end
 
-    -- Với các vật thể skill (quả cầu, băng, slash, hitbox…)
-    elseif obj:IsA("BasePart") then
-        -- Không đụng vào map
-        if not IsMapPart(obj) then
-            obj.Transparency = 1
-            obj.Material = Enum.Material.Plastic
-            obj.Reflectance = 0
-            obj.CastShadow = false
-            pcall(function()
-                obj.CanCollide = false
-            end)
-        end
+    return false
+end
 
-    elseif obj:IsA("Explosion") then
-        obj.BlastPressure = 0
-        obj.BlastRadius = 0
+-- Xử lý ẩn hiệu ứng hình ảnh
+local function HandleVisual(obj)
+    if IsVisualEffect(obj) then
+        pcall(function()
+            obj:Destroy()
+        end)
     end
 end
 
--- Quét toàn bộ game (chỉ ẩn skill)
-for _,v in pairs(game:GetDescendants()) do
-    HideSkill(v)
+-- Xử lý tắt âm thanh skill/đánh thường
+local function HandleSound(obj)
+    if IsSkillSound(obj) then
+        pcall(function()
+            obj.Volume = 0
+            obj.Playing = false
+            obj:Stop()
+        end)
+    end
 end
 
--- Bắt mọi hiệu ứng mới sinh ra (khi dùng skill, chém, bắn, đánh thường)
+-- Quét toàn bộ game
+for _,v in ipairs(game:GetDescendants()) do
+    HandleVisual(v)
+    HandleSound(v)
+end
+
+-- Bắt object mới sinh ra khi dùng skill / đánh thường
 game.DescendantAdded:Connect(function(v)
     task.wait()
-    HideSkill(v)
+    HandleVisual(v)
+    HandleSound(v)
 end)
 
--- Giảm đồ họa xuống mức thấp để tăng FPS
-settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+-- Giảm chất lượng render (không ảnh hưởng vật lý)
+pcall(function()
+    settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+end)
 
-print("✅ DONE: Đã ẩn hiệu ứng skill + đánh thường, GIỮ NGUYÊN MAP")
+print("✅ DONE: Đã ẩn hiệu ứng skill + đánh thường & tắt âm thanh | No conflict | Sea OK")
