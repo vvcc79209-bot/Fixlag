@@ -1,73 +1,95 @@
--- Script: Blox Fruits Effect Remover - WORKING VERSION
--- Phiên bản: Đảm bảo hoạt động + Không lag
+-- Script: Blox Fruits Mobile Optimizer
+-- Tối ưu cho điện thoại, giảm hiệu ứng 90%, 10% còn lại màu xám
+-- Phiên bản: Mobile Friendly - Không lag
 
-local player = game:GetService("Players").LocalPlayer
-local character = player.Character or player.CharacterAdded:Wait()
-local runService = game:GetService("RunService")
-local debris = game:GetService("Debris")
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Lighting = game:GetService("Lighting")
+local UserInputService = game:GetService("UserInputService")
 
--- CẤU HÌNH CHÍNH
-local REMOVE_PERCENTAGE = 90 -- 90% hiệu ứng bị xóa
-local UPDATE_INTERVAL = 1 -- Cập nhật mỗi 1 giây (KHÔNG QUÉT MỖI FRAME!)
-local DEBUG_MODE = true -- Hiển thị thông tin debug
+-- CẤU HÌNH CHO ĐIỆN THOẠI
+local isMobile = UserInputService.TouchEnabled
+local REMOVE_CHANCE = 0.9 -- 90%
+local UPDATE_RATE = 2 -- Giây (chậm hơn cho điện thoại)
+local MAX_EFFECTS_PER_FRAME = 5 -- Giới hạn để không lag
 
--- Biến theo dõi
-local effectCount = 0
-local removedCount = 0
-local lastUpdate = 0
-local isRunning = true
+-- Biến toàn cục
+local Player = Players.LocalPlayer
+local Character = Player.Character or Player.CharacterAdded:Wait()
+local EffectsRemoved = 0
+local LastUpdate = 0
+local ScriptEnabled = true
 
--- Danh sách TỪ KHÓA cụ thể của Blox Fruits
-local BLOX_FRUITS_EFFECTS = {
+-- Danh sách hiệu ứng đặc trưng Blox Fruits
+local EFFECT_KEYWORDS = {
     -- Hiệu ứng trái
-    "Fruit", "Demon", "Angel", "Buddha", "Dough", "Dragon", "Leopard", "Mammoth",
-    "Kitsune", "T-Rex", "Spirit", "Venom", "Control", "Shadow", "Gravity",
-    "Phoenix", "Rumble", "Pain", "Blizzard", "Quake", "Light", "Dark", "Ice",
-    "Magma", "Flame", "Sand", "Spin", "Spring", "Bomb", "Spike", "Chop", "Barrier",
-    
-    -- Hiệu ứng skill
-    "Skill", "Ability", "Attack", "Move", "Combo", "Stomp", "Slam", "Wave",
-    "Beam", "Barrage", "Rush", "Dash", "Teleport", "Clone", "Transform",
-    
-    -- Hiệu ứng VFX
-    "VFX", "FX", "Effect", "Particle", "Smoke", "Fire", "Spark", "Sparkles",
-    "Explosion", "Burst", "Blast", "Shockwave", "Aura", "Glow", "Light",
-    "Trail", "Beam", "Ring", "Circle", "Orb", "Ball", "Projectile",
-    
-    -- Tên đặc biệt trong Blox Fruits
-    "Z", "X", "C", "V", "F", -- Các nút skill
-    "M1", "M2", -- Click chuột
-    "Zenith", "Godhuman", "Sharkman", "DeathStep", "Electric",
-    "Soul", "Ghoul", "Cyborg", "Human"
+    "FruitEffect", "DevilFruit", "Awakening", 
+    -- Kỹ năng
+    "Skill", "Ability", "Move", "Attack", "Combat",
+    -- VFX
+    "VFX", "Effect", "Particle", "Smoke", "Fire", 
+    "Sparkles", "Explosion", "Aura", "Glow", "Trail",
+    -- Các nút
+    "ZEffect", "XEffect", "CEffect", "VEffect", "FEffect",
+    -- Đặc biệt
+    "M1", "M2", "Slam", "Stomp", "Wave", "Beam", "Rush"
 }
 
--- Hàm kiểm tra xem có phải effect cần xóa không
-local function isEffectToRemove(instance)
-    local name = instance.Name:lower()
+-- TỐI ƯU HÓA CHO ĐIỆN THOẠI
+local function optimizeForMobile()
+    if not isMobile then return end
     
+    print("[Mobile] Đang tối ưu hóa cho điện thoại...")
+    
+    -- Giảm chất lượng đồ họa
+    Lighting.GlobalShadows = false
+    Lighting.FogEnd = 300
+    Lighting.Brightness = 2
+    
+    -- Tắt các hiệu ứng không cần thiết
+    for _, effect in pairs(Lighting:GetChildren()) do
+        if effect:IsA("PostEffect") then
+            effect.Enabled = false
+        end
+    end
+    
+    -- Chế độ màu xám nhẹ
+    local grayEffect = Instance.new("ColorCorrectionEffect")
+    grayEffect.Name = "MobileGrayEffect"
+    grayEffect.Saturation = -0.4
+    grayEffect.Contrast = 0.05
+    grayEffect.Parent = Lighting
+    
+    -- Giảm physics
+    settings().Physics.PhysicsEnvironmentalThrottle = 2
+end
+
+-- Hàm kiểm tra hiệu ứng cần xử lý
+local function shouldProcess(obj)
     -- Kiểm tra ClassName
-    if instance:IsA("ParticleEmitter") or 
-       instance:IsA("Beam") or 
-       instance:IsA("Trail") or
-       instance:IsA("Explosion") or
-       instance:IsA("Fire") or
-       instance:IsA("Smoke") or
-       instance:IsA("Sparkles") then
+    if obj:IsA("ParticleEmitter") or 
+       obj:IsA("Beam") or 
+       obj:IsA("Trail") or
+       obj:IsA("Fire") or
+       obj:IsA("Smoke") or
+       obj:IsA("Sparkles") then
         return true
     end
     
     -- Kiểm tra tên
-    for _, keyword in ipairs(BLOX_FRUITS_EFFECTS) do
-        if name:find(keyword:lower()) then
+    local objName = obj.Name:lower()
+    for _, keyword in pairs(EFFECT_KEYWORDS) do
+        if objName:find(keyword:lower()) then
             return true
         end
     end
     
-    -- Kiểm tra trong Model/Part
-    if instance:IsA("BasePart") then
-        if instance.Transparency > 0.5 or 
-           instance.Name:find("Effect") or
-           instance.Name:find("VFX") then
+    -- Kiểm tra thuộc tính
+    if obj:IsA("BasePart") then
+        if obj.Transparency > 0.6 or 
+           obj.Material == Enum.Material.Neon or
+           obj.Name:match("Effect") or
+           obj.Name:match("VFX") then
             return true
         end
     end
@@ -75,275 +97,341 @@ local function isEffectToRemove(instance)
     return false
 end
 
--- Hàm xóa effect
-local function removeEffect(effect)
-    if not effect or not effect.Parent then return end
+-- Hàm xử lý hiệu ứng (nhẹ nhàng cho điện thoại)
+local function processEffect(effect)
+    if not effect or not effect.Parent then return false end
     
-    -- Quyết định xóa hay làm xám
-    local shouldRemove = math.random(1, 100) <= REMOVE_PERCENTAGE
+    local randomChance = math.random()
     
-    if shouldRemove then
-        -- XÓA THẬT SỰ
-        effectCount = effectCount + 1
+    if randomChance <= REMOVE_CHANCE then
+        -- Xóa 90% hiệu ứng
+        EffectsRemoved += 1
         
         if effect:IsA("ParticleEmitter") then
+            -- Tắt từ từ để không giật
             effect.Enabled = false
+            task.wait(0.05)
             effect:Destroy()
         elseif effect:IsA("BasePart") then
-            debris:AddItem(effect, 0.1)
+            effect.Transparency = 1
+            task.wait(0.1)
+            effect:Destroy()
         else
             effect:Destroy()
         end
         
-        removedCount = removedCount + 1
-        
-        if DEBUG_MODE and removedCount % 10 == 0 then
-            print("[Effect Remover] Đã xóa:", removedCount, "effects")
-        end
+        return true
     else
-        -- Làm xám (10% còn lại)
+        -- 10% còn lại chuyển màu xám
         if effect:IsA("ParticleEmitter") then
-            effect.Color = ColorSequence.new(Color3.fromRGB(100, 100, 100))
+            effect.Color = ColorSequence.new(
+                Color3.fromRGB(150, 150, 150)
+            )
             effect.LightEmission = 0.1
-            effect.Rate = effect.Rate * 0.3
+            effect.Rate = effect.Rate * 0.2 -- Giảm đáng kể
         elseif effect:IsA("BasePart") then
             effect.Color = Color3.fromRGB(120, 120, 120)
-            effect.Material = Enum.Material.Slate
-            effect.Transparency = effect.Transparency + 0.3
+            effect.Material = Enum.Material.SmoothPlastic
+            effect.Transparency = math.min(effect.Transparency + 0.3, 0.8)
+        elseif effect:IsA("Beam") or effect:IsA("Trail") then
+            effect.Color = ColorSequence.new(
+                Color3.fromRGB(130, 130, 130)
+            )
+            effect.Width0 = effect.Width0 * 0.5
+            effect.Width1 = effect.Width1 * 0.5
         end
+        return false
     end
 end
 
--- Hàm quét HIỆU QUẢ - không lag
-local function scanForEffects()
-    if not isRunning then return end
+-- Quét và xử lý (tối ưu cho điện thoại)
+local function mobileFriendlyScan()
+    if not ScriptEnabled then return end
+    if tick() - LastUpdate < UPDATE_RATE then return end
     
-    local currentTime = tick()
-    if currentTime - lastUpdate < UPDATE_INTERVAL then return end
-    lastUpdate = currentTime
+    LastUpdate = tick()
     
-    -- Tìm các workspace effects
-    local workspaceEffects = {}
+    local foundEffects = {}
+    local processedCount = 0
     
-    -- Chỉ quét trong các folder chứa effect
-    local potentialFolders = {
+    -- Ưu tiên quét character trước
+    if Character and Character.Parent then
+        for _, obj in pairs(Character:GetDescendants()) do
+            if shouldProcess(obj) then
+                table.insert(foundEffects, obj)
+            end
+        end
+    end
+    
+    -- Quét workspace (giới hạn để không lag)
+    local importantFolders = {
         workspace:FindFirstChild("Effects"),
-        workspace:FindFirstChild("Skills"),
         workspace:FindFirstChild("VFX"),
-        workspace:FindFirstChild("Particles")
+        workspace:FindFirstChild("Skills")
     }
     
-    for _, folder in ipairs(potentialFolders) do
-        if folder then
-            for _, effect in ipairs(folder:GetDescendants()) do
-                if isEffectToRemove(effect) then
-                    table.insert(workspaceEffects, effect)
+    for _, folder in pairs(importantFolders) do
+        if folder and processedCount < 20 then
+            for _, obj in pairs(folder:GetDescendants()) do
+                if shouldProcess(obj) then
+                    table.insert(foundEffects, obj)
+                    processedCount += 1
+                    if processedCount >= 20 then break end
                 end
             end
         end
+        if processedCount >= 20 then break end
     end
     
-    -- Quét trực tiếp trong workspace cho các effect lẻ
-    for _, effect in ipairs(workspace:GetDescendants()) do
-        if isEffectToRemove(effect) then
-            table.insert(workspaceEffects, effect)
-        end
-    end
-    
-    -- Quét trên character của player
-    if character then
-        for _, part in ipairs(character:GetDescendants()) do
-            if isEffectToRemove(part) then
-                table.insert(workspaceEffects, part)
-            end
-        end
-    end
-    
-    -- Quét trên các player khác
-    for _, otherPlayer in ipairs(game:GetService("Players"):GetPlayers()) do
-        if otherPlayer ~= player and otherPlayer.Character then
-            for _, part in ipairs(otherPlayer.Character:GetDescendants()) do
-                if isEffectToRemove(part) then
-                    table.insert(workspaceEffects, part)
-                end
-            end
-        end
-    end
-    
-    -- Xử lý batch - KHÔNG xử lý tất cả cùng lúc
-    local batchSize = math.min(#workspaceEffects, 15) -- Giới hạn mỗi lần
-    for i = 1, batchSize do
-        if workspaceEffects[i] then
-            task.spawn(removeEffect, workspaceEffects[i])
-        end
-    end
-    
-    if DEBUG_MODE and #workspaceEffects > 0 then
-        print("[Effect Remover] Tìm thấy:", #workspaceEffects, "effects")
-        print("[Effect Remover] Xử lý:", batchSize, "effects này")
-    end
-end
-
--- Hàm tối ưu lighting để giảm lag
-local function optimizeGameForPerformance()
-    local lighting = game:GetService("Lighting")
-    
-    -- Tắt các hiệu ứng tốn kém
-    lighting.GlobalShadows = false
-    lighting.FogEnd = 500
-    lighting.OutdoorAmbient = Color3.fromRGB(128, 128, 128)
-    
-    -- Chuyển sang màu xám nhẹ
-    local colorCorrection = Instance.new("ColorCorrectionEffect")
-    colorCorrection.Saturation = -0.3
-    colorCorrection.Contrast = 0.1
-    colorCorrection.Parent = lighting
-    
-    -- Giảm chất lượng rendering
-    if settings() and settings().Rendering then
-        pcall(function()
-            settings().Rendering.QualityLevel = 1
+    -- Xử lý từng effect với delay để không lag
+    for i = 1, math.min(#foundEffects, MAX_EFFECTS_PER_FRAME) do
+        task.spawn(function()
+            processEffect(foundEffects[i])
         end)
+        -- Delay nhỏ giữa các effect
+        if i % 2 == 0 then
+            task.wait(0.02)
+        end
+    end
+    
+    if #foundEffects > 0 and EffectsRemoved % 10 == 0 then
+        print(string.format("[Mobile] Đã xử lý %d hiệu ứng", EffectsRemoved))
     end
 end
 
--- Tạo UI thông tin
-local function createInfoUI()
-    local screenGui = Instance.new("ScreenGui")
-    screenGui.Name = "EffectRemoverInfo"
-    screenGui.Parent = player:WaitForChild("PlayerGui")
+-- UI ĐƠN GIẢN CHO ĐIỆN THOẠI
+local function createMobileUI()
+    local ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.Name = "MobileEffectRemoverUI"
+    ScreenGui.DisplayOrder = 999
+    ScreenGui.ResetOnSpawn = false
+    ScreenGui.Parent = Player:WaitForChild("PlayerGui")
     
-    local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(0, 250, 0, 100)
-    frame.Position = UDim2.new(0, 10, 0, 10)
-    frame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
-    frame.BackgroundTransparency = 0.3
-    frame.BorderSizePixel = 0
-    frame.Parent = screenGui
+    -- Frame chính
+    local MainFrame = Instance.new("Frame")
+    MainFrame.Size = UDim2.new(0, 200, 0, 60)
+    MainFrame.Position = UDim2.new(0.5, -100, 0, 10)
+    MainFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+    MainFrame.BackgroundTransparency = 0.3
+    MainFrame.BorderSizePixel = 0
+    MainFrame.Parent = ScreenGui
     
-    local title = Instance.new("TextLabel")
-    title.Text = "🔥 BLOX FRUITS EFFECT REMOVER"
-    title.Size = UDim2.new(1, 0, 0, 30)
-    title.BackgroundTransparency = 1
-    title.TextColor3 = Color3.fromRGB(255, 100, 100)
-    title.Font = Enum.Font.GothamBold
-    title.TextSize = 14
-    title.Parent = frame
+    -- Title
+    local Title = Instance.new("TextLabel")
+    Title.Text = "📱 MOBILE OPTIMIZER"
+    Title.Size = UDim2.new(1, 0, 0, 20)
+    Title.BackgroundTransparency = 1
+    Title.TextColor3 = Color3.fromRGB(100, 200, 255)
+    Title.Font = Enum.Font.GothamBold
+    Title.TextSize = 12
+    Title.Parent = MainFrame
     
-    local status = Instance.new("TextLabel")
-    status.Text = "Đang chạy... (F8: Tắt/Bật)"
-    status.Size = UDim2.new(1, 0, 0, 40)
-    status.Position = UDim2.new(0, 0, 0, 30)
-    status.BackgroundTransparency = 1
-    status.TextColor3 = Color3.fromRGB(100, 255, 100)
-    status.Font = Enum.Font.Gotham
-    status.TextSize = 12
-    status.Parent = frame
+    -- Status
+    local Status = Instance.new("TextLabel")
+    Status.Text = "Đang chạy..."
+    Status.Size = UDim2.new(1, 0, 0, 20)
+    Status.Position = UDim2.new(0, 0, 0, 20)
+    Status.BackgroundTransparency = 1
+    Status.TextColor3 = Color3.fromRGB(100, 255, 100)
+    Status.Font = Enum.Font.Gotham
+    Status.TextSize = 11
+    Status.Parent = MainFrame
     
-    local counter = Instance.new("TextLabel")
-    counter.Text = "Đã xóa: 0 effects"
-    counter.Size = UDim2.new(1, 0, 0, 30)
-    counter.Position = UDim2.new(0, 0, 0, 70)
-    counter.BackgroundTransparency = 1
-    counter.TextColor3 = Color3.fromRGB(200, 200, 255)
-    counter.Font = Enum.Font.Gotham
-    counter.TextSize = 12
-    counter.Parent = frame
+    -- Counter
+    local Counter = Instance.new("TextLabel")
+    Counter.Text = "Effects: 0"
+    Counter.Size = UDim2.new(1, 0, 0, 20)
+    Counter.Position = UDim2.new(0, 0, 0, 40)
+    Counter.BackgroundTransparency = 1
+    Counter.TextColor3 = Color3.fromRGB(200, 200, 255)
+    Counter.Font = Enum.Font.Gotham
+    Counter.TextSize = 11
+    Counter.Parent = MainFrame
+    
+    -- Nút tắt/bật (cho điện thoại)
+    local ToggleButton = Instance.new("TextButton")
+    ToggleButton.Size = UDim2.new(0, 40, 0, 40)
+    ToggleButton.Position = UDim2.new(1, 5, 0, 10)
+    ToggleButton.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
+    ToggleButton.Text = "ON"
+    ToggleButton.TextColor3 = Color3.fromRGB(100, 255, 100)
+    ToggleButton.Font = Enum.Font.GothamBold
+    ToggleButton.TextSize = 12
+    ToggleButton.Parent = MainFrame
+    
+    ToggleButton.MouseButton1Click:Connect(function()
+        ScriptEnabled = not ScriptEnabled
+        if ScriptEnabled then
+            Status.Text = "Đang chạy..."
+            Status.TextColor3 = Color3.fromRGB(100, 255, 100)
+            ToggleButton.Text = "ON"
+            ToggleButton.TextColor3 = Color3.fromRGB(100, 255, 100)
+        else
+            Status.Text = "Đã tắt"
+            Status.TextColor3 = Color3.fromRGB(255, 100, 100)
+            ToggleButton.Text = "OFF"
+            ToggleButton.TextColor3 = Color3.fromRGB(255, 100, 100)
+        end
+    end)
     
     -- Cập nhật counter
     spawn(function()
-        while screenGui.Parent do
-            counter.Text = string.format("Đã xóa: %d effects", removedCount)
-            wait(1)
+        while ScreenGui.Parent do
+            Counter.Text = string.format("Effects: %d", EffectsRemoved)
+            task.wait(1)
         end
     end)
     
-    return screenGui, status
-end
-
--- KHỞI CHẠY CHÍNH
-local function main()
-    print("========================================")
-    print("BLOX FRUITS EFFECT REMOVER - WORKING VERSION")
-    print("Xóa " .. REMOVE_PERCENTAGE .. "% hiệu ứng skill")
-    print("10% còn lại chuyển màu xám")
-    print("========================================")
+    -- Cho phép kéo frame
+    local dragging = false
+    local dragInput, dragStart, startPos
     
-    -- Chờ character
-    if not character then
-        character = player.CharacterAdded:Wait()
-    end
-    
-    -- Tối ưu game
-    optimizeGameForPerformance()
-    
-    -- Tạo UI
-    local ui, statusLabel = createInfoUI()
-    
-    -- Kết nối quét với tần suất THẤP
-    local connection
-    connection = runService.Heartbeat:Connect(function(deltaTime)
-        if isRunning then
-            -- Chỉ quét mỗi UPDATE_INTERVAL giây
-            if tick() - lastUpdate >= UPDATE_INTERVAL then
-                scanForEffects()
-            end
-        end
-    end)
-    
-    -- Kết nối character thay đổi
-    player.CharacterAdded:Connect(function(newChar)
-        character = newChar
-        wait(1) -- Chờ character load
-        print("[Effect Remover] Character mới đã load")
-    end)
-    
-    -- Hotkey tắt/bật
-    local uis = game:GetService("UserInputService")
-    uis.InputBegan:Connect(function(input, processed)
-        if not processed and input.KeyCode == Enum.KeyCode.F8 then
-            isRunning = not isRunning
-            if statusLabel then
-                statusLabel.Text = isRunning and "Đang chạy... (F8: Tắt/Bật)" 
-                                     or "Đã tạm dừng (F8: Tiếp tục)"
-                statusLabel.TextColor3 = isRunning and Color3.fromRGB(100, 255, 100) 
-                                          or Color3.fromRGB(255, 100, 100)
-            end
-            print("[Effect Remover]", isRunning and "Đã bật" or "Đã tắt")
-        end
-    end)
-    
-    -- Auto-clean khi player chết
-    local function onDied()
-        removedCount = 0
-        effectCount = 0
-        print("[Effect Remover] Reset counter khi chết")
-    end
-    
-    if character:FindFirstChild("Humanoid") then
-        character.Humanoid.Died:Connect(onDied)
-    end
-    
-    print("[Effect Remover] Khởi động thành công!")
-    print("[Effect Remover] Nhấn F8 để tắt/bật")
-end
-
--- Chạy an toàn
-local success, err = pcall(main)
-if not success then
-    warn("Lỗi khi khởi động script:", err)
-    
-    -- Phương pháp dự phòng đơn giản
-    spawn(function()
-        while wait(1) do
-            pcall(function()
-                -- Xóa các particle emitter đơn giản
-                for _, obj in ipairs(workspace:GetDescendants()) do
-                    if obj:IsA("ParticleEmitter") and math.random(1, 100) <= 90 then
-                        obj:Destroy()
-                    end
+    MainFrame.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = MainFrame.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
                 end
             end)
+        end
+    end)
+    
+    MainFrame.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.Touch then
+            dragInput = input
+        end
+    end)
+    
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and input == dragInput then
+            local delta = input.Position - dragStart
+            MainFrame.Position = UDim2.new(
+                startPos.X.Scale, 
+                startPos.X.Offset + delta.X,
+                startPos.Y.Scale, 
+                startPos.Y.Offset + delta.Y
+            )
+        end
+    end)
+    
+    return ScreenGui, Status
+end
+
+-- KHỞI ĐỘNG
+local function initializeMobile()
+    print("=================================")
+    print("BLOX FRUITS MOBILE OPTIMIZER")
+    print("Dành cho điện thoại")
+    print("Xóa 90% hiệu ứng, 10% còn lại xám")
+    print("=================================")
+    
+    -- Chờ character
+    if not Character then
+        Character = Player.CharacterAdded:Wait()
+    end
+    
+    -- Tối ưu cho mobile
+    optimizeForMobile()
+    
+    -- Tạo UI
+    local ui, statusLabel = createMobileUI()
+    
+    -- Kết nối quét
+    local connection
+    connection = RunService.Heartbeat:Connect(function()
+        if ScriptEnabled then
+            mobileFriendlyScan()
+        end
+    end)
+    
+    -- Xử lý character thay đổi
+    Player.CharacterAdded:Connect(function(newChar)
+        Character = newChar
+        task.wait(2) -- Chờ lâu hơn cho mobile
+        print("[Mobile] Character mới đã load")
+    end)
+    
+    -- Auto-clean khi vào server
+    task.wait(5)
+    print("[Mobile] Đang dọn dẹp hiệu ứng cũ...")
+    
+    -- Clean mạnh khi mới vào game
+    spawn(function()
+        task.wait(10)
+        for i = 1, 3 do
+            mobileFriendlyScan()
+            task.wait(1)
+        end
+        print("[Mobile] Dọn dẹp hoàn tất!")
+    end)
+    
+    print("[Mobile] Script đã sẵn sàng!")
+    print("[Mobile] Chạm vào nút ON/OFF để tắt bật")
+end
+
+-- PHƯƠNG PHÁP ĐƠN GIẢN HƠN (nếu vẫn lag)
+local function simpleMobileMethod()
+    -- Chỉ xóa particle emitters - cách nhẹ nhất
+    spawn(function()
+        while task.wait(2) do
+            if not ScriptEnabled then continue end
+            
+            local count = 0
+            for _, obj in pairs(workspace:GetDescendants()) do
+                if obj:IsA("ParticleEmitter") and math.random() <= 0.9 then
+                    obj.Enabled = false
+                    task.wait(0.01)
+                    obj:Destroy()
+                    count += 1
+                    
+                    if count >= 10 then break end
+                end
+            end
+            
+            if count > 0 then
+                EffectsRemoved += count
+                print(string.format("[Simple] Đã xóa %d particles", count))
+            end
+        end
+    end)
+end
+
+-- CHẠY AN TOÀN
+local success, err = pcall(initializeMobile)
+if not success then
+    warn("[Mobile] Lỗi khởi động:", err)
+    print("[Mobile] Đang chạy chế độ đơn giản...")
+    pcall(simpleMobileMethod)
+end
+
+-- THÊM TÍNH NĂNG AUTO-CLOSE KHI FPS THẤP
+if isMobile then
+    spawn(function()
+        local lastTime = tick()
+        local frames = 0
+        
+        while task.wait(0.5) do
+            frames += 1
+            if tick() - lastTime >= 2 then
+                local fps = frames / 2
+                
+                -- Nếu FPS quá thấp, tự động tắt
+                if fps < 15 and ScriptEnabled then
+                    print(string.format("[Mobile] FPS thấp (%d), đang tắt script...", fps))
+                    ScriptEnabled = false
+                    
+                    -- Bật lại sau 30 giây
+                    task.wait(30)
+                    ScriptEnabled = true
+                    print("[Mobile] Đã bật lại script")
+                end
+                
+                frames = 0
+                lastTime = tick()
+            end
         end
     end)
 end
