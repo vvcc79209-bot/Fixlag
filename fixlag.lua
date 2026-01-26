@@ -1,181 +1,249 @@
--- Script: Blox Fruits Skill Effect Remover
+-- Script: Blox Fruits Effect Optimizer (Không lag)
 -- Tác giả: Blox Fruits Modder
--- Mô tả: Loại bỏ 90% hiệu ứng skill, chuyển 10% còn lại sang màu xám
+-- Phiên bản: Tối ưu hiệu suất
 
 local player = game.Players.LocalPlayer
 local character = player.Character or player.CharacterAdded:Wait()
 local lighting = game:GetService("Lighting")
 local runService = game:GetService("RunService")
+local ts = game:GetService("TweenService")
 
--- Cấu hình
-local REMOVE_CHANCE = 0.9 -- 90% hiệu ứng bị xóa
-local GRAYSCALE_INTENSITY = 0.8 -- Độ đậm của màu xám (0-1)
+-- Cấu hình hiệu suất
+local PERFORMANCE_MODE = true -- Bật chế độ tiết kiệm
+local SCAN_INTERVAL = 0.5 -- Quét mỗi 0.5 giây thay vì mỗi frame
+local BATCH_SIZE = 20 -- Xử lý 20 effects mỗi lần
+local EFFECT_CACHE = {} -- Cache để tránh xử lý trùng
 
--- Danh sách các hiệu ứng cần xử lý
-local effectNames = {
-    "SkillEffect", "AbilityEffect", "AttackEffect", 
-    "CombatEffect", "MagicEffect", "FruitEffect",
-    "VFX", "ParticleEmitter", "Beam", "Trail",
-    "Explosion", "Smoke", "Fire", "Sparkles",
-    "Light", "Glow", "Aura"
+-- Cấu hình hiệu ứng
+local REMOVE_CHANCE = 0.9
+local GRAYSCALE_INTENSITY = 0.8
+
+-- Danh sách effects ưu tiên
+local priorityEffects = {
+    "SkillEffect", "AbilityEffect", "AttackEffect",
+    "FruitEffect", "VFX", "ParticleEmitter"
 }
 
--- Hàm chuyển đổi màu sang thang độ xám
+-- Cache cho các effect đã xử lý
+local processedEffects = {}
+local lastScanTime = 0
+
+-- Hàm chuyển màu sang xám (tối ưu)
 local function toGrayscale(color)
-    local luminance = 0.299 * color.R + 0.587 * color.G + 0.114 * color.B
-    return Color3.new(luminance, luminance, luminance)
+    return Color3.new(0.5, 0.5, 0.5) -- Màu xám cố định để tiết kiệm tính toán
 end
 
--- Hàm xử lý hiệu ứng
-local function processEffect(effect)
-    if math.random() < REMOVE_CHANCE then
-        -- Xóa 90% hiệu ứng
-        effect:Destroy()
-        return false
-    else
-        -- Giữ lại 10% và chuyển sang màu xám
-        if effect:IsA("ParticleEmitter") then
-            effect.Color = ColorSequence.new(toGrayscale(effect.Color.Keypoints[1].Value))
-        elseif effect:IsA("Beam") then
-            effect.Color = ColorSequence.new(toGrayscale(effect.Color.Keypoints[1].Value))
-        elseif effect:IsA("Trail") then
-            effect.Color = ColorSequence.new(toGrayscale(effect.Color.Keypoints[1].Value))
-        elseif effect:IsA("PointLight") or effect:IsA("SurfaceLight") then
-            effect.Color = toGrayscale(effect.Color)
-            effect.Brightness = effect.Brightness * 0.5
-        elseif effect:IsA("Decal") or effect:IsA("Texture") then
-            effect.Color3 = toGrayscale(effect.Color3)
-        end
-        
-        -- Giảm độ sáng và độ tương phản
-        if effect:IsA("BasePart") then
-            effect.Material = Enum.Material.Slate
-            effect.Color = toGrayscale(effect.Color)
-            effect.Transparency = effect.Transparency + 0.1
-        end
-        
-        return true
-    end
-end
-
--- Hàm quét và xử lý hiệu ứng trong workspace
-local function scanAndProcessEffects()
-    for _, name in ipairs(effectNames) do
-        local effects = workspace:GetDescendants()
-        for _, effect in ipairs(effects) do
-            if effect.Name:find(name) or effect.ClassName:find("Effect") then
-                processEffect(effect)
-            end
-        end
-    end
+-- Hàm xử lý effect với debounce
+local function processEffectOptimized(effect)
+    if processedEffects[effect] then return end
     
-    -- Xử lý hiệu ứng từ character
+    -- Đánh dấu đã xử lý
+    processedEffects[effect] = true
+    
+    if math.random() < REMOVE_CHANCE then
+        -- Xóa với delay để tránh freeze
+        task.spawn(function()
+            task.wait(math.random() * 0.1) -- Random delay
+            if effect and effect.Parent then
+                effect.Enabled = false
+                task.wait(0.05)
+                effect:Destroy()
+            end
+        end)
+    else
+        -- Chuyển sang màu xám (ít tốn kém)
+        task.spawn(function()
+            if effect:IsA("ParticleEmitter") then
+                effect.Rate = effect.Rate * 0.5 -- Giảm số lượng particle
+                effect.Lifetime = NumberRange.new(effect.Lifetime.Min * 0.7, effect.Lifetime.Max * 0.7)
+            end
+            
+            if effect:IsA("BasePart") then
+                effect.Material = Enum.Material.Slate
+                effect.Transparency = math.min(effect.Transparency + 0.2, 0.8)
+            end
+        end)
+    end
+end
+
+-- Quét hiệu ứng với tối ưu
+local function optimizedScan()
+    local currentTime = tick()
+    if currentTime - lastScanTime < SCAN_INTERVAL then return end
+    lastScanTime = currentTime
+    
+    -- Chỉ quét các effect mới
+    local effectsFound = 0
+    
+    -- Quét character trước (quan trọng hơn)
     if character then
         for _, part in ipairs(character:GetDescendants()) do
-            if part.Name:find("Effect") or part.Name:find("Skill") or part.Name:find("VFX") then
-                processEffect(part)
+            for _, effectName in ipairs(priorityEffects) do
+                if part.Name:find(effectName) then
+                    processEffectOptimized(part)
+                    effectsFound = effectsFound + 1
+                    if effectsFound >= BATCH_SIZE then return end
+                    break
+                end
+            end
+        end
+    end
+    
+    -- Quét workspace (giới hạn phạm vi)
+    local nearbyRegion = workspace:FindFirstChild("Effects") or 
+                         workspace:FindFirstChild("Skills") or
+                         workspace
+    
+    for _, effect in ipairs(nearbyRegion:GetDescendants()) do
+        if effectsFound >= BATCH_SIZE then break end
+        
+        for _, effectName in ipairs(priorityEffects) do
+            if effect.Name:find(effectName) and not processedEffects[effect] then
+                -- Kiểm tra khoảng cách (chỉ xử lý effects gần player)
+                if character and effect:IsA("BasePart") then
+                    local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+                    if humanoidRootPart then
+                        local distance = (humanoidRootPart.Position - effect.Position).Magnitude
+                        if distance > 500 then -- Chỉ xử lý trong 500 studs
+                            continue
+                        end
+                    end
+                end
+                
+                processEffectOptimized(effect)
+                effectsFound = effectsFound + 1
+                break
             end
         end
     end
 end
 
--- Áp dụng hiệu ứng xám cho lighting
-local function applyGrayLighting()
-    -- Tạo hiệu ứng màu xám
+-- Tối ưu lighting (chạy 1 lần)
+local function optimizeLighting()
+    -- Giảm chất lượng lighting để tăng FPS
+    lighting.GlobalShadows = false
+    lighting.FogEnd = 1000
+    lighting.Brightness = 2
+    lighting.ExposureCompensation = 0.5
+    
+    -- Thêm color correction để làm xám
     local colorCorrection = Instance.new("ColorCorrectionEffect")
-    colorCorrection.Name = "GrayEffect"
-    colorCorrection.Saturation = -0.7 -- Giảm độ bão hòa
-    colorCorrection.Contrast = 0.1 -- Tăng độ tương phản nhẹ
+    colorCorrection.Saturation = -0.5
+    colorCorrection.Contrast = 0.1
+    colorCorrection.TintColor = Color3.fromRGB(128, 128, 128)
+    colorCorrection.Enabled = PERFORMANCE_MODE
     colorCorrection.Parent = lighting
+end
+
+-- Hủy effects cũ
+local function cleanupOldEffects()
+    for effect, _ in pairs(processedEffects) do
+        if not effect or not effect.Parent then
+            processedEffects[effect] = nil
+        end
+    end
     
-    -- Điều chỉnh atmosphere
-    if lighting:FindFirstChild("Atmosphere") then
-        lighting.Atmosphere.Color = toGrayscale(lighting.Atmosphere.Color)
+    -- Thu gom bộ nhớ
+    if #table.keys(processedEffects) > 1000 then
+        local newTable = {}
+        local count = 0
+        for effect, _ in pairs(processedEffects) do
+            if effect and effect.Parent then
+                newTable[effect] = true
+                count = count + 1
+                if count >= 500 then break end
+            end
+        end
+        processedEffects = newTable
     end
 end
 
--- Hàm bảo vệ chống anti-cheat
-local function safeExecute(func)
-    local success, err = pcall(func)
-    if not success then
-        warn("Lỗi khi thực thi script: " .. err)
-    end
-end
-
--- Khởi động script
-local function initialize()
-    print("=== Blox Fruits Skill Effect Remover ===")
-    print("Đang xóa 90% hiệu ứng skill...")
-    print("Đang chuyển 10% còn lại sang màu xám...")
+-- Khởi tạo với FPS cao
+local function initializeOptimized()
+    print("=== Blox Fruits Performance Optimizer ===")
+    print("Chế độ: " .. (PERFORMANCE_MODE and "Tiết kiệm FPS" or "Bình thường"))
+    print("Quét mỗi: " .. SCAN_INTERVAL .. " giây")
     
-    -- Chờ character load
+    -- Chờ character
     if not character then
-        player.CharacterAdded:Wait()
-        character = player.Character
+        character = player.CharacterAdded:Wait()
     end
     
-    -- Áp dụng xử lý ban đầu
-    safeExecute(function()
-        scanAndProcessEffects()
-        applyGrayLighting()
+    -- Thiết lập ban đầu
+    optimizeLighting()
+    
+    -- Lập lịch quét với interval
+    local scanConnection
+    scanConnection = runService.Heartbeat:Connect(function(deltaTime)
+        -- Sử dụng deltaTime để điều chỉnh tần suất
+        if PERFORMANCE_MODE then
+            optimizedScan()
+            
+            -- Dọn dẹp mỗi 5 giây
+            if tick() % 5 < deltaTime then
+                cleanupOldEffects()
+            end
+        end
     end)
     
-    -- Liên tục quét hiệu ứng mới
-    runService.Heartbeat:Connect(function()
-        safeExecute(scanAndProcessEffects)
-    end)
-    
-    -- Xử lý khi character thay đổi
+    -- Xử lý character mới
     player.CharacterAdded:Connect(function(newChar)
         character = newChar
-        task.wait(1) -- Chờ character load đầy đủ
-        safeExecute(scanAndProcessEffects)
+        task.wait(2) -- Chờ character ổn định
+        processedEffects = {} -- Reset cache
     end)
     
-    print("Script đã được kích hoạt thành công!")
-    print("90% hiệu ứng skill đã bị xóa, 10% còn lại hiển thị màu xám.")
+    print("Tối ưu hóa hoàn tất!")
+    print("FPS sẽ được cải thiện đáng kể")
 end
 
--- Chạy script
-initialize()
+-- Giao diện nhẹ
+local function createLightUI()
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "PerformanceUI"
+    screenGui.DisplayOrder = 999
+    screenGui.ResetOnSpawn = false
+    screenGui.Parent = player:WaitForChild("PlayerGui")
+    
+    local info = Instance.new("TextLabel")
+    info.Text = "Performance Mode: ON"
+    info.Size = UDim2.new(0, 150, 0, 30)
+    info.Position = UDim2.new(1, -160, 1, -40)
+    info.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    info.BackgroundTransparency = 0.7
+    info.TextColor3 = Color3.fromRGB(0, 255, 0)
+    info.Font = Enum.Font.RobotoMono
+    info.TextSize = 12
+    info.Parent = screenGui
+    
+    -- Update FPS counter
+    local lastTime = tick()
+    local frames = 0
+    
+    runService.Heartbeat:Connect(function()
+        frames = frames + 1
+        if tick() - lastTime >= 1 then
+            local fps = math.floor(frames / (tick() - lastTime))
+            info.Text = "FPS: " .. fps .. " | Mode: ON"
+            frames = 0
+            lastTime = tick()
+        end
+    end)
+    
+    return screenGui
+end
 
--- Giao diện người dùng đơn giản
-local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "EffectRemoverUI"
-screenGui.Parent = player:WaitForChild("PlayerGui")
-
-local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 200, 0, 80)
-frame.Position = UDim2.new(0, 10, 0, 10)
-frame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-frame.BackgroundTransparency = 0.3
-frame.BorderSizePixel = 0
-frame.Parent = screenGui
-
-local title = Instance.new("TextLabel")
-title.Text = "Effect Remover"
-title.Size = UDim2.new(1, 0, 0, 30)
-title.BackgroundTransparency = 1
-title.TextColor3 = Color3.fromRGB(255, 255, 255)
-title.Font = Enum.Font.GothamBold
-title.TextSize = 14
-title.Parent = frame
-
-local status = Instance.new("TextLabel")
-status.Text = "Đang chạy: 90% xóa, 10% xám"
-status.Size = UDim2.new(1, 0, 0, 50)
-status.Position = UDim2.new(0, 0, 0, 30)
-status.BackgroundTransparency = 1
-status.TextColor3 = Color3.fromRGB(200, 200, 200)
-status.Font = Enum.Font.Gotham
-status.TextSize = 12
-status.TextWrapped = true
-status.Parent = frame
-
--- Hotkey để bật/tắt UI (F8)
-local uis = game:GetService("UserInputService")
-uis.InputBegan:Connect(function(input, processed)
-    if not processed and input.KeyCode == Enum.KeyCode.F8 then
-        screenGui.Enabled = not screenGui.Enabled
-    end
+-- Chạy script tối ưu
+task.spawn(function()
+    initializeOptimized()
+    createLightUI()
+    
+    -- Hotkey tắt/bật chế độ performance
+    local uis = game:GetService("UserInputService")
+    uis.InputBegan:Connect(function(input, processed)
+        if not processed and input.KeyCode == Enum.KeyCode.F9 then
+            PERFORMANCE_MODE = not PERFORMANCE_MODE
+            print("Performance Mode: " .. (PERFORMANCE_MODE and "ON" or "OFF"))
+        end
+    end)
 end)
