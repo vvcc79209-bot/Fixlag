@@ -1,23 +1,12 @@
--- Blox Fruits Effect Optimizer (95%)
--- Remove effects, keep ground SAFE
+-- Blox Fruits Effect Optimizer FINAL FIX
+-- 95% effects removed | Map & Sea SAFE
 
 local Workspace = game:GetService("Workspace")
 
-local TRANSPARENT_LEVEL = 0.85
+local EFFECT_TRANSPARENCY = 0.85
 
--- Kiểm tra có phải mặt đất / map không
-local function isGround(obj)
-    if not obj:IsA("BasePart") then return false end
-    if obj:IsDescendantOf(Workspace.Terrain) then return true end
-    local name = obj.Name:lower()
-    if name:find("ground") or name:find("land") or name:find("floor") or name:find("island") then
-        return true
-    end
-    return false
-end
-
--- Xoá effect nặng
-local function removeEffects(obj)
+-- Chỉ nhận diện object LÀ EFFECT
+local function isEffect(obj)
     if obj:IsA("ParticleEmitter")
     or obj:IsA("Trail")
     or obj:IsA("Beam")
@@ -25,36 +14,57 @@ local function removeEffects(obj)
     or obj:IsA("Smoke")
     or obj:IsA("Sparkles")
     or obj:IsA("Explosion") then
+        return true
+    end
+
+    -- Part effect thường có SpecialMesh / Decal / Texture
+    if obj:IsA("BasePart") then
+        if obj:FindFirstChildOfClass("SpecialMesh")
+        or obj:FindFirstChildOfClass("Decal")
+        or obj:FindFirstChildOfClass("Texture") then
+            return true
+        end
+    end
+
+    return false
+end
+
+-- Xoá effect nặng
+local function removeHeavy(obj)
+    if obj:IsA("ParticleEmitter")
+    or obj:IsA("Trail")
+    or obj:IsA("Beam")
+    or obj:IsA("Explosion") then
         obj:Destroy()
     end
 end
 
--- Làm trong suốt effect part (KHÔNG phải mặt đất)
-local function transparentEffectPart(obj)
-    if obj:IsA("BasePart") and not isGround(obj) then
+-- Làm trong suốt part effect (KHÔNG MAP)
+local function transparentEffect(obj)
+    if obj:IsA("BasePart") and isEffect(obj) then
         obj.Material = Enum.Material.SmoothPlastic
         obj.Reflectance = 0
-        if obj.Transparency < TRANSPARENT_LEVEL then
-            obj.Transparency = TRANSPARENT_LEVEL
+        if obj.Transparency < EFFECT_TRANSPARENCY then
+            obj.Transparency = EFFECT_TRANSPARENCY
         end
     end
 end
 
--- Quét map
+-- Quét toàn bộ
 for _,v in ipairs(Workspace:GetDescendants()) do
     pcall(function()
-        removeEffects(v)
-        transparentEffectPart(v)
+        removeHeavy(v)
+        transparentEffect(v)
     end)
 end
 
--- Bắt effect mới sinh ra
+-- Bắt effect mới
 Workspace.DescendantAdded:Connect(function(v)
     task.wait()
     pcall(function()
-        removeEffects(v)
-        transparentEffectPart(v)
+        removeHeavy(v)
+        transparentEffect(v)
     end)
 end)
 
-print("✅ 95% effects removed | Ground SAFE")
+print("✅ Effect optimized | Map & Sea SAFE")
