@@ -1,13 +1,22 @@
 -- Blox Fruits Effect Optimizer (95%)
--- Remove most effects + make remaining effects transparent
--- Stable version
+-- Remove effects, keep ground SAFE
 
 local Workspace = game:GetService("Workspace")
 
--- Transparency level for remaining effects
-local TRANSPARENT_LEVEL = 0.85 -- càng gần 1 càng vô hình
+local TRANSPARENT_LEVEL = 0.85
 
--- Remove heavy effects
+-- Kiểm tra có phải mặt đất / map không
+local function isGround(obj)
+    if not obj:IsA("BasePart") then return false end
+    if obj:IsDescendantOf(Workspace.Terrain) then return true end
+    local name = obj.Name:lower()
+    if name:find("ground") or name:find("land") or name:find("floor") or name:find("island") then
+        return true
+    end
+    return false
+end
+
+-- Xoá effect nặng
 local function removeEffects(obj)
     if obj:IsA("ParticleEmitter")
     or obj:IsA("Trail")
@@ -20,36 +29,32 @@ local function removeEffects(obj)
     end
 end
 
--- Make remaining skill parts transparent
-local function transparentPart(obj)
-    if obj:IsA("BasePart") then
-        -- Không đụng terrain
-        if obj:IsDescendantOf(Workspace.Terrain) then return end
-
+-- Làm trong suốt effect part (KHÔNG phải mặt đất)
+local function transparentEffectPart(obj)
+    if obj:IsA("BasePart") and not isGround(obj) then
         obj.Material = Enum.Material.SmoothPlastic
         obj.Reflectance = 0
-
         if obj.Transparency < TRANSPARENT_LEVEL then
             obj.Transparency = TRANSPARENT_LEVEL
         end
     end
 end
 
--- Scan toàn map
+-- Quét map
 for _,v in ipairs(Workspace:GetDescendants()) do
     pcall(function()
         removeEffects(v)
-        transparentPart(v)
+        transparentEffectPart(v)
     end)
 end
 
--- Bắt effect mới sinh ra (skill)
+-- Bắt effect mới sinh ra
 Workspace.DescendantAdded:Connect(function(v)
     task.wait()
     pcall(function()
         removeEffects(v)
-        transparentPart(v)
+        transparentEffectPart(v)
     end)
 end)
 
-print("✅ 95% effects removed | Remaining effects transparent")
+print("✅ 95% effects removed | Ground SAFE")
