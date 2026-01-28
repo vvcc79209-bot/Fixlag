@@ -1,12 +1,13 @@
--- Blox Fruits Effect Optimizer FINAL FIX
--- 95% effects removed | Map & Sea SAFE
+-- Blox Fruits Effect Optimizer FINAL (HITBOX SAFE)
+-- Remove ~95% visual effects
+-- FIX Kabucha Z circle | Map & Sea SAFE
 
 local Workspace = game:GetService("Workspace")
 
-local EFFECT_TRANSPARENCY = 0.85
+-- ❌ TUYỆT ĐỐI KHÔNG ĐỤNG BasePart
+-- ✅ CHỈ xử lý EFFECT HÌNH ẢNH
 
--- Chỉ nhận diện object LÀ EFFECT
-local function isEffect(obj)
+local function removeVisualEffect(obj)
     if obj:IsA("ParticleEmitter")
     or obj:IsA("Trail")
     or obj:IsA("Beam")
@@ -14,57 +15,23 @@ local function isEffect(obj)
     or obj:IsA("Smoke")
     or obj:IsA("Sparkles")
     or obj:IsA("Explosion") then
-        return true
-    end
-
-    -- Part effect thường có SpecialMesh / Decal / Texture
-    if obj:IsA("BasePart") then
-        if obj:FindFirstChildOfClass("SpecialMesh")
-        or obj:FindFirstChildOfClass("Decal")
-        or obj:FindFirstChildOfClass("Texture") then
-            return true
-        end
-    end
-
-    return false
-end
-
--- Xoá effect nặng
-local function removeHeavy(obj)
-    if obj:IsA("ParticleEmitter")
-    or obj:IsA("Trail")
-    or obj:IsA("Beam")
-    or obj:IsA("Explosion") then
         obj:Destroy()
     end
 end
 
--- Làm trong suốt part effect (KHÔNG MAP)
-local function transparentEffect(obj)
-    if obj:IsA("BasePart") and isEffect(obj) then
-        obj.Material = Enum.Material.SmoothPlastic
-        obj.Reflectance = 0
-        if obj.Transparency < EFFECT_TRANSPARENCY then
-            obj.Transparency = EFFECT_TRANSPARENCY
-        end
-    end
-end
-
--- Quét toàn bộ
+-- Quét effect đang tồn tại
 for _,v in ipairs(Workspace:GetDescendants()) do
     pcall(function()
-        removeHeavy(v)
-        transparentEffect(v)
+        removeVisualEffect(v)
     end)
 end
 
--- Bắt effect mới
+-- Bắt effect mới sinh ra (skill)
 Workspace.DescendantAdded:Connect(function(v)
     task.wait()
     pcall(function()
-        removeHeavy(v)
-        transparentEffect(v)
+        removeVisualEffect(v)
     end)
 end)
 
-print("✅ Effect optimized | Map & Sea SAFE")
+print("✅ 95% visual effects removed | Hitbox & Map SAFE")
