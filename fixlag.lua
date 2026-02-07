@@ -1,51 +1,49 @@
--- Blox Fruits Effect Cleaner
--- Remove 98% effects, 2% transparent, no leftovers
+-- Script tối ưu hóa Blox Fruits: Xóa hiệu ứng & Phụ kiện
+local Lighting = game:GetService("Lighting")
+local Players = game:GetService("Players")
 
-local Workspace = game:GetService("Workspace")
-local RunService = game:GetService("RunService")
-local Debris = game:GetService("Debris")
-
-local REMOVE_NAMES = {
-	"Effect","FX","VFX","Particle","Trail","Beam",
-	"Smoke","Fire","Explosion","Shock","Ring","Wave",
-	"Slash","Hit","Aura","Glow","Light"
-}
-
-local function isEffect(obj)
-	for _,name in pairs(REMOVE_NAMES) do
-		if string.find(obj.Name:lower(), name:lower()) then
-			return true
-		end
-	end
-	return false
+-- 1. Xóa bỏ 95% hiệu ứng môi trường và hạt (Particles)
+for _, v in pairs(game:GetDescendants()) do
+    if v:IsA("ParticleEmitter") or v:IsA("Smoke") or v:IsA("Fire") or v:IsA("Sparkles") then
+        v.Enabled = false
+    elseif v:IsA("PostProcessEffect") then -- Xóa Blur, Bloom, v.v.
+        v.Enabled = false
+    end
 end
 
-local function clearEffect(obj)
-	if obj:IsA("ParticleEmitter")
-	or obj:IsA("Trail")
-	or obj:IsA("Beam") then
-		obj.Enabled = false
-		Debris:AddItem(obj, 0)
-	elseif obj:IsA("BasePart") then
-		obj.Transparency = 1
-		obj.Material = Enum.Material.SmoothPlastic
-		obj.CanCollide = false
-		obj.CastShadow = false
-		Debris:AddItem(obj, 0)
-	elseif obj:IsA("Decal") or obj:IsA("Texture") then
-		obj.Transparency = 1
-		Debris:AddItem(obj, 0)
-	elseif obj:IsA("Light") then
-		obj.Enabled = false
-		Debris:AddItem(obj, 0)
-	end
+-- 2. Xóa phụ kiện và chỉnh màu nhân vật thành xám/trắng
+local function optimizeCharacter(char)
+    task.wait(0.5) -- Đợi nhân vật load xong
+    
+    -- Xóa phụ kiện (mũ, áo choàng, kiếm treo...)
+    for _, item in pairs(char:GetChildren()) do
+        if item:IsA("Accessory") then
+            item:Destroy()
+        end
+    end
+    
+    -- Đổi màu cơ thể thành xám trắng (5% còn lại)
+    for _, part in pairs(char:GetChildren()) do
+        if part:IsA("BasePart") then
+            part.Color = Color3.fromRGB(200, 200, 200) -- Màu xám trắng
+            part.Material = Enum.Material.SmoothPlastic -- Làm mượt bề mặt
+        end
+    end
 end
 
--- Main loop
-RunService.Heartbeat:Connect(function()
-	for _,obj in pairs(Workspace:GetDescendants()) do
-		if isEffect(obj) then
-			clearEffect(obj)
-		end
-	end
+-- Áp dụng cho người chơi hiện tại và người mới vào
+for _, player in pairs(Players:GetPlayers()) do
+    if player.Character then optimizeCharacter(player.Character) end
+    player.CharacterAdded:Connect(optimizeCharacter)
+end
+
+Players.PlayerAdded:Connect(function(player)
+    player.CharacterAdded:Connect(optimizeCharacter)
 end)
+
+-- 3. Cài đặt Lighting để giảm lag tối đa
+Lighting.GlobalShadows = false
+Lighting.FogEnd = 9e9
+settings().Rendering.QualityLevel = 1
+
+print("Đã tối ưu hóa 95% hiệu ứng và xóa phụ kiện thành công!")
