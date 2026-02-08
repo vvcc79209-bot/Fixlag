@@ -1,97 +1,100 @@
---// BLOX FRUITS LOW FX + GRAY WORLD (CLIENT SIDE)
---// tối ưu nhẹ, tránh loop nặng & xung đột
+--// BLOX FRUITS - GREY WORLD + 95% EFFECT REMOVER
+--// LocalScript - StarterPlayerScripts
 
-local Players = game:GetService("Players")
-local Lighting = game:GetService("Lighting")
 local Workspace = game:GetService("Workspace")
+local Lighting = game:GetService("Lighting")
+local Terrain = Workspace:FindFirstChildOfClass("Terrain")
 
-local LocalPlayer = Players.LocalPlayer
+local GREY = Color3.fromRGB(120,120,120)
 
---// cấu hình
-local KEEP_SKY = true
-local GRAY_COLOR = Color3.fromRGB(120,120,120)
-
---// function chuyển part sang màu xám
-local function makeGray(obj)
-    if obj:IsA("BasePart") then
-        obj.Material = Enum.Material.SmoothPlastic
-        obj.Color = GRAY_COLOR
-        obj.Reflectance = 0
-    end
+--// check sky
+local function isSky(obj)
+	if obj:IsA("Sky") then return true end
+	if obj:IsA("Atmosphere") and obj.Parent == Lighting then return true end
+	if obj:IsA("Clouds") and obj.Parent == Terrain then return true end
+	if obj.Name == "SunRays" then return true end
+	return false
 end
 
---// xoá phụ kiện nhân vật
-local function removeAccessories(char)
-    for _,v in ipairs(char:GetChildren()) do
-        if v:IsA("Accessory") then
-            v:Destroy()
-        end
-    end
+--// remove heavy effects (95%)
+local function removeHeavyEffect(obj)
+	if obj:IsA("ParticleEmitter")
+	or obj:IsA("Trail")
+	or obj:IsA("Beam")
+	or obj:IsA("Explosion")
+	or obj:IsA("Fire")
+	or obj:IsA("Smoke") then
+
+		obj.Enabled = false
+		return true
+	end
+	return false
 end
 
---// giảm hiệu ứng skill
-local function reduceEffects(obj)
-    if obj:IsA("ParticleEmitter")
-    or obj:IsA("Trail")
-    or obj:IsA("Beam") then
-        obj.Enabled = false -- xoá 95%
-    end
-    
-    if obj:IsA("PointLight")
-    or obj:IsA("SpotLight") then
-        obj.Color = GRAY_COLOR -- 5% còn lại xám
-        obj.Brightness = 0.2
-    end
+--// grey remaining visuals
+local function makeGrey(obj)
+
+	if isSky(obj) then return end
+
+	-- part
+	if obj:IsA("BasePart") then
+		obj.Color = GREY
+		if obj.Material == Enum.Material.Neon then
+			obj.Material = Enum.Material.SmoothPlastic
+		end
+	end
+
+	-- decal texture
+	if obj:IsA("Decal") or obj:IsA("Texture") then
+		obj.Color3 = GREY
+	end
+
+	-- remaining particle (5%)
+	if obj:IsA("ParticleEmitter") then
+		obj.Color = ColorSequence.new(GREY)
+	end
+
+	if obj:IsA("Beam") or obj:IsA("Trail") then
+		obj.Color = ColorSequence.new(GREY)
+	end
+
+	-- light
+	if obj:IsA("PointLight")
+	or obj:IsA("SpotLight")
+	or obj:IsA("SurfaceLight") then
+		obj.Color = GREY
+		obj.Brightness = obj.Brightness * 0.3
+	end
+
+	-- highlight
+	if obj:IsA("Highlight") then
+		obj.FillColor = GREY
+		obj.OutlineColor = GREY
+	end
 end
 
---// xử lý map (đất + biển xám, giữ trời)
-local function processWorld()
-    for _,obj in ipairs(Workspace:GetDescendants()) do
-        
-        -- bỏ qua sky nếu cần
-        if KEEP_SKY and obj:IsA("Sky") then
-            continue
-        end
-        
-        if obj.Name:lower():find("water")
-        or obj.Name:lower():find("sea")
-        or obj.Name:lower():find("ground")
-        or obj.Name:lower():find("terrain") then
-            makeGray(obj)
-        end
-        
-        reduceEffects(obj)
-    end
+--// main process
+local function process(obj)
+	if isSky(obj) then return end
+
+	local removed = removeHeavyEffect(obj)
+	if not removed then
+		makeGrey(obj)
+	end
 end
 
---// tối ưu lighting
-local function optimizeLighting()
-    Lighting.GlobalShadows = false
-    Lighting.FogEnd = 100000
-    Lighting.Brightness = 1
-    
-    for _,v in ipairs(Lighting:GetChildren()) do
-        if v:IsA("BlurEffect")
-        or v:IsA("SunRaysEffect")
-        or v:IsA("ColorCorrectionEffect")
-        or v:IsA("BloomEffect") then
-            v.Enabled = false
-        end
-    end
+-- scan existing
+for _,v in ipairs(game:GetDescendants()) do
+	pcall(function()
+		process(v)
+	end)
 end
 
---// chạy chính
-optimizeLighting()
-processWorld()
-
---// nhân vật spawn
-if LocalPlayer.Character then
-    removeAccessories(LocalPlayer.Character)
-end
-
-LocalPlayer.CharacterAdded:Connect(function(char)
-    task.wait(2)
-    removeAccessories(char)
+-- new objects (skills spawn liên tục trong blox fruits)
+game.DescendantAdded:Connect(function(obj)
+	pcall(function()
+		process(obj)
+	end)
 end)
 
-print("✅ Low FX Gray Mode Loaded - Optimized")
+print("✅ Blox Fruits Grey Mode + Effect Reducer Running")
