@@ -1,85 +1,71 @@
---// Visual Optimizer - Grey World + Reduce Effects (Client Side)
---// Designed to minimize conflicts (non-destructive edits)
+--// BLOX FRUITS LOW FX + GRAYSCALE (NON-CONFLICT VERSION)
 
-local Players = game:GetService("Players")
 local Lighting = game:GetService("Lighting")
-local CollectionService = game:GetService("CollectionService")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
 
-local player = Players.LocalPlayer
-local TAG = "VISUAL_OPTIMIZED"
+--========================
+-- SETTINGS
+--========================
+local FX_REDUCTION = 0.1 -- giữ lại 10% hiệu ứng (~xoá 90%)
 
---// CONFIG
-local EFFECT_REDUCTION = 0.95
+--========================
+-- GRAYSCALE (TRỪ SKY)
+--========================
+local color = Instance.new("ColorCorrectionEffect")
+color.Name = "LowFx_GrayScale"
+color.Saturation = -1
+color.Contrast = 0
+color.TintColor = Color3.fromRGB(200,200,200)
+color.Parent = Lighting
 
---// Helper: check sky objects
-local function isSkyObject(obj)
-    if obj:IsDescendantOf(Lighting) then
-        if obj:IsA("Sky") or obj.Name:lower():find("sky") then
-            return true
-        end
-    end
-    return false
+--========================
+-- FX REDUCTION FUNCTION
+--========================
+local function reduceFX(obj)
+
+	-- Particle
+	if obj:IsA("ParticleEmitter") then
+		obj.Rate = obj.Rate * FX_REDUCTION
+		obj.LightEmission = 0
+	end
+
+	-- Trail
+	if obj:IsA("Trail") then
+		obj.Lifetime = obj.Lifetime * FX_REDUCTION
+	end
+
+	-- Beam
+	if obj:IsA("Beam") then
+		obj.Width0 = obj.Width0 * FX_REDUCTION
+		obj.Width1 = obj.Width1 * FX_REDUCTION
+	end
+
+	-- Explosion
+	if obj:IsA("Explosion") then
+		obj.BlastPressure = 0
+	end
+
+	-- Light
+	if obj:IsA("PointLight")
+	or obj:IsA("SpotLight")
+	or obj:IsA("SurfaceLight") then
+		obj.Brightness = obj.Brightness * FX_REDUCTION
+	end
 end
 
---// Reduce visual effects safely
-local function reduceEffects(obj)
-    if CollectionService:HasTag(obj, TAG) then return end
-
-    if obj:IsA("ParticleEmitter") or obj:IsA("Trail") then
-        obj.Rate = obj.Rate * (1 - EFFECT_REDUCTION)
-        obj.Lifetime = NumberRange.new(0)
-        CollectionService:AddTag(obj, TAG)
-
-    elseif obj:IsA("Beam") then
-        obj.Enabled = false
-        CollectionService:AddTag(obj, TAG)
-
-    elseif obj:IsA("PointLight") or obj:IsA("SpotLight") or obj:IsA("SurfaceLight") then
-        obj.Brightness = obj.Brightness * 0.05
-        CollectionService:AddTag(obj, TAG)
-
-    elseif obj:IsA("Explosion") then
-        obj.Visible = false
-        CollectionService:AddTag(obj, TAG)
-    end
+--========================
+-- APPLY TO EXISTING
+--========================
+for _,v in ipairs(Workspace:GetDescendants()) do
+	reduceFX(v)
 end
 
---// Grey world filter (except sky)
-local function greyify(obj)
-    if CollectionService:HasTag(obj, TAG) then return end
-    if isSkyObject(obj) then return end
-
-    if obj:IsA("BasePart") then
-        obj.Color = Color3.fromRGB(128,128,128)
-        obj.Material = Enum.Material.SmoothPlastic
-        CollectionService:AddTag(obj, TAG)
-
-    elseif obj:IsA("Decal") or obj:IsA("Texture") then
-        obj.Color3 = Color3.fromRGB(150,150,150)
-        CollectionService:AddTag(obj, TAG)
-    end
-end
-
---// Process existing objects
-for _,obj in ipairs(workspace:GetDescendants()) do
-    pcall(function()
-        reduceEffects(obj)
-        greyify(obj)
-    end)
-end
-
---// Process new objects (skills spawn liên tục)
-workspace.DescendantAdded:Connect(function(obj)
-    task.wait()
-    pcall(function()
-        reduceEffects(obj)
-        greyify(obj)
-    end)
+--========================
+-- APPLY TO NEW OBJECTS
+--========================
+Workspace.DescendantAdded:Connect(function(obj)
+	reduceFX(obj)
 end)
 
---// Lighting tweak (giữ sky nhưng giảm màu tổng thể)
-Lighting.Brightness = 1
-Lighting.GlobalShadows = false
-Lighting.FogEnd = 100000
-
-print("Visual Optimizer Loaded")
+print("Low FX + Grayscale Loaded (Non Conflict Mode)")
