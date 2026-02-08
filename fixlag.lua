@@ -1,100 +1,85 @@
---// BLOX FRUITS - GREY WORLD + 95% EFFECT REMOVER
---// LocalScript - StarterPlayerScripts
+--// Visual Optimizer - Grey World + Reduce Effects (Client Side)
+--// Designed to minimize conflicts (non-destructive edits)
 
-local Workspace = game:GetService("Workspace")
+local Players = game:GetService("Players")
 local Lighting = game:GetService("Lighting")
-local Terrain = Workspace:FindFirstChildOfClass("Terrain")
+local CollectionService = game:GetService("CollectionService")
 
-local GREY = Color3.fromRGB(120,120,120)
+local player = Players.LocalPlayer
+local TAG = "VISUAL_OPTIMIZED"
 
---// check sky
-local function isSky(obj)
-	if obj:IsA("Sky") then return true end
-	if obj:IsA("Atmosphere") and obj.Parent == Lighting then return true end
-	if obj:IsA("Clouds") and obj.Parent == Terrain then return true end
-	if obj.Name == "SunRays" then return true end
-	return false
+--// CONFIG
+local EFFECT_REDUCTION = 0.95
+
+--// Helper: check sky objects
+local function isSkyObject(obj)
+    if obj:IsDescendantOf(Lighting) then
+        if obj:IsA("Sky") or obj.Name:lower():find("sky") then
+            return true
+        end
+    end
+    return false
 end
 
---// remove heavy effects (95%)
-local function removeHeavyEffect(obj)
-	if obj:IsA("ParticleEmitter")
-	or obj:IsA("Trail")
-	or obj:IsA("Beam")
-	or obj:IsA("Explosion")
-	or obj:IsA("Fire")
-	or obj:IsA("Smoke") then
+--// Reduce visual effects safely
+local function reduceEffects(obj)
+    if CollectionService:HasTag(obj, TAG) then return end
 
-		obj.Enabled = false
-		return true
-	end
-	return false
+    if obj:IsA("ParticleEmitter") or obj:IsA("Trail") then
+        obj.Rate = obj.Rate * (1 - EFFECT_REDUCTION)
+        obj.Lifetime = NumberRange.new(0)
+        CollectionService:AddTag(obj, TAG)
+
+    elseif obj:IsA("Beam") then
+        obj.Enabled = false
+        CollectionService:AddTag(obj, TAG)
+
+    elseif obj:IsA("PointLight") or obj:IsA("SpotLight") or obj:IsA("SurfaceLight") then
+        obj.Brightness = obj.Brightness * 0.05
+        CollectionService:AddTag(obj, TAG)
+
+    elseif obj:IsA("Explosion") then
+        obj.Visible = false
+        CollectionService:AddTag(obj, TAG)
+    end
 end
 
---// grey remaining visuals
-local function makeGrey(obj)
+--// Grey world filter (except sky)
+local function greyify(obj)
+    if CollectionService:HasTag(obj, TAG) then return end
+    if isSkyObject(obj) then return end
 
-	if isSky(obj) then return end
+    if obj:IsA("BasePart") then
+        obj.Color = Color3.fromRGB(128,128,128)
+        obj.Material = Enum.Material.SmoothPlastic
+        CollectionService:AddTag(obj, TAG)
 
-	-- part
-	if obj:IsA("BasePart") then
-		obj.Color = GREY
-		if obj.Material == Enum.Material.Neon then
-			obj.Material = Enum.Material.SmoothPlastic
-		end
-	end
-
-	-- decal texture
-	if obj:IsA("Decal") or obj:IsA("Texture") then
-		obj.Color3 = GREY
-	end
-
-	-- remaining particle (5%)
-	if obj:IsA("ParticleEmitter") then
-		obj.Color = ColorSequence.new(GREY)
-	end
-
-	if obj:IsA("Beam") or obj:IsA("Trail") then
-		obj.Color = ColorSequence.new(GREY)
-	end
-
-	-- light
-	if obj:IsA("PointLight")
-	or obj:IsA("SpotLight")
-	or obj:IsA("SurfaceLight") then
-		obj.Color = GREY
-		obj.Brightness = obj.Brightness * 0.3
-	end
-
-	-- highlight
-	if obj:IsA("Highlight") then
-		obj.FillColor = GREY
-		obj.OutlineColor = GREY
-	end
+    elseif obj:IsA("Decal") or obj:IsA("Texture") then
+        obj.Color3 = Color3.fromRGB(150,150,150)
+        CollectionService:AddTag(obj, TAG)
+    end
 end
 
---// main process
-local function process(obj)
-	if isSky(obj) then return end
-
-	local removed = removeHeavyEffect(obj)
-	if not removed then
-		makeGrey(obj)
-	end
+--// Process existing objects
+for _,obj in ipairs(workspace:GetDescendants()) do
+    pcall(function()
+        reduceEffects(obj)
+        greyify(obj)
+    end)
 end
 
--- scan existing
-for _,v in ipairs(game:GetDescendants()) do
-	pcall(function()
-		process(v)
-	end)
-end
-
--- new objects (skills spawn liên tục trong blox fruits)
-game.DescendantAdded:Connect(function(obj)
-	pcall(function()
-		process(obj)
-	end)
+--// Process new objects (skills spawn liên tục)
+workspace.DescendantAdded:Connect(function(obj)
+    task.wait()
+    pcall(function()
+        reduceEffects(obj)
+        greyify(obj)
+    end)
 end)
 
-print("✅ Blox Fruits Grey Mode + Effect Reducer Running")
+--// Lighting tweak (giữ sky nhưng giảm màu tổng thể)
+Lighting.Brightness = 1
+Lighting.GlobalShadows = false
+Lighting.FogEnd = 100000
+
+print("Visual Optimizer Loaded")
