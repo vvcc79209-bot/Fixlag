@@ -1,89 +1,73 @@
---=================================================
--- CONFIG
---=================================================
-local Config = {
-    RemoveParticles = true,        -- Xoá ParticleEmitter/Trail/Beam
-    GrayScaleWorld = true,         -- Đổi màu các BasePart thành xám
-    GrayScaleTerrain = true,       -- Đổi terrain sang xám
-    EffectDisableRate = 0.95,      -- Tỷ lệ xoá hiệu ứng (0.0 → 1.0, 0.95 = 95%)
-    PreserveSky = true             -- Giữ Sky/Mặt trời nguyên vẹn
+--// CONFIG
+local KEEP_SKY = true
+local GRAY = Color3.fromRGB(120,120,120)
+
+--// EFFECT LIST (xoá mạnh)
+local Effects = {
+    ParticleEmitter=true,
+    Trail=true,
+    Beam=true,
+    Fire=true,
+    Smoke=true,
+    Sparkles=true,
+    Explosion=true,
+    Highlight=true,
+    PointLight=true,
+    SpotLight=true,
+    SurfaceLight=true,
+    Decal=true,
+    Texture=true,
+    Sound=true
 }
 
---=================================================
--- MODULE
---=================================================
-local Cleaner = {}
-
-function Cleaner:IsEffect(obj)
-    local effectTypes = {
-        "ParticleEmitter",
-        "Trail",
-        "Beam",
-        "Fire",
-        "Smoke",
-        "Sparkles"
-    }
-    for _, t in ipairs(effectTypes) do
-        if obj:IsA(t) then
-            return true
-        end
+--// POST EFFECT (flash trắng, blur, bloom…)
+for _,v in pairs(game:GetService("Lighting"):GetChildren()) do
+    if v:IsA("BloomEffect")
+    or v:IsA("BlurEffect")
+    or v:IsA("ColorCorrectionEffect")
+    or v:IsA("SunRaysEffect")
+    or v:IsA("DepthOfFieldEffect") then
+        v:Destroy()
     end
-    return false
 end
 
-function Cleaner:DisableEffect(obj)
-    pcall(function()
-        if obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Beam") then
-            obj.Enabled = false
-        else
+--// REMOVE FX
+local function Process(obj)
+
+    -- giữ mặt trời
+    if KEEP_SKY and obj:IsA("Sky") then
+        return
+    end
+
+    -- xoá hiệu ứng
+    if Effects[obj.ClassName] then
+        pcall(function()
             obj:Destroy()
-        end
-    end)
-end
-
-function Cleaner:GrayPart(obj)
-    pcall(function()
-        if obj:IsA("BasePart") then
-            obj.Color = Color3.fromRGB(125,125,125)
-            obj.Material = Enum.Material.SmoothPlastic
-        end
-    end)
-end
-
-function Cleaner:ProcessObj(obj)
-    if Config.RemoveParticles and self:IsEffect(obj) then
-        if math.random() < Config.EffectDisableRate then
-            self:DisableEffect(obj)
-        end
+        end)
+        return
     end
 
-    if Config.GrayScaleWorld then
-        self:GrayPart(obj)
+    -- xoá mesh effect skill
+    if obj:IsA("SpecialMesh") or obj:IsA("BlockMesh") then
+        pcall(function()
+            obj:Destroy()
+        end)
+    end
+
+    -- đổi màu xám
+    if obj:IsA("BasePart") then
+        obj.Color = GRAY
+        obj.Material = Enum.Material.SmoothPlastic
     end
 end
 
-function Cleaner:ProcessTerrain()
-    pcall(function()
-        local t = workspace.Terrain
-        t:FillRegion(Region3.new(t.MaxExtents.Min, t.MaxExtents.Max), Enum.Material.Slate, Color3.fromRGB(120,120,120))
-    end)
+--// FIRST CLEAN
+for _,v in pairs(game:GetDescendants()) do
+    Process(v)
 end
 
---=================================================
--- RUN
---=================================================
-
--- First pass apply to existing objects
-for _, obj in ipairs(game:GetDescendants()) do
-    Cleaner:ProcessObj(obj)
-end
-
--- If terrain grayscale is on
-if Config.GrayScaleTerrain then
-    Cleaner:ProcessTerrain()
-end
-
--- Keep auto-processing new objects
-game.DescendantAdded:Connect(function(obj)
-    Cleaner:ProcessObj(obj)
+--// AUTO CLEAN FX MỚI
+game.DescendantAdded:Connect(function(v)
+    task.wait()
+    Process(v)
 end)
