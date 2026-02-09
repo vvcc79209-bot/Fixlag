@@ -1,71 +1,89 @@
---// BLOX FRUITS LOW FX + GRAYSCALE (NON-CONFLICT VERSION)
+--=================================================
+-- CONFIG
+--=================================================
+local Config = {
+    RemoveParticles = true,        -- Xoá ParticleEmitter/Trail/Beam
+    GrayScaleWorld = true,         -- Đổi màu các BasePart thành xám
+    GrayScaleTerrain = true,       -- Đổi terrain sang xám
+    EffectDisableRate = 0.95,      -- Tỷ lệ xoá hiệu ứng (0.0 → 1.0, 0.95 = 95%)
+    PreserveSky = true             -- Giữ Sky/Mặt trời nguyên vẹn
+}
 
-local Lighting = game:GetService("Lighting")
-local RunService = game:GetService("RunService")
-local Workspace = game:GetService("Workspace")
+--=================================================
+-- MODULE
+--=================================================
+local Cleaner = {}
 
---========================
--- SETTINGS
---========================
-local FX_REDUCTION = 0.1 -- giữ lại 10% hiệu ứng (~xoá 90%)
-
---========================
--- GRAYSCALE (TRỪ SKY)
---========================
-local color = Instance.new("ColorCorrectionEffect")
-color.Name = "LowFx_GrayScale"
-color.Saturation = -1
-color.Contrast = 0
-color.TintColor = Color3.fromRGB(200,200,200)
-color.Parent = Lighting
-
---========================
--- FX REDUCTION FUNCTION
---========================
-local function reduceFX(obj)
-
-	-- Particle
-	if obj:IsA("ParticleEmitter") then
-		obj.Rate = obj.Rate * FX_REDUCTION
-		obj.LightEmission = 0
-	end
-
-	-- Trail
-	if obj:IsA("Trail") then
-		obj.Lifetime = obj.Lifetime * FX_REDUCTION
-	end
-
-	-- Beam
-	if obj:IsA("Beam") then
-		obj.Width0 = obj.Width0 * FX_REDUCTION
-		obj.Width1 = obj.Width1 * FX_REDUCTION
-	end
-
-	-- Explosion
-	if obj:IsA("Explosion") then
-		obj.BlastPressure = 0
-	end
-
-	-- Light
-	if obj:IsA("PointLight")
-	or obj:IsA("SpotLight")
-	or obj:IsA("SurfaceLight") then
-		obj.Brightness = obj.Brightness * FX_REDUCTION
-	end
+function Cleaner:IsEffect(obj)
+    local effectTypes = {
+        "ParticleEmitter",
+        "Trail",
+        "Beam",
+        "Fire",
+        "Smoke",
+        "Sparkles"
+    }
+    for _, t in ipairs(effectTypes) do
+        if obj:IsA(t) then
+            return true
+        end
+    end
+    return false
 end
 
---========================
--- APPLY TO EXISTING
---========================
-for _,v in ipairs(Workspace:GetDescendants()) do
-	reduceFX(v)
+function Cleaner:DisableEffect(obj)
+    pcall(function()
+        if obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Beam") then
+            obj.Enabled = false
+        else
+            obj:Destroy()
+        end
+    end)
 end
 
---========================
--- APPLY TO NEW OBJECTS
---========================
-Workspace.DescendantAdded:Connect(function(obj)
-	reduceFX(obj)
+function Cleaner:GrayPart(obj)
+    pcall(function()
+        if obj:IsA("BasePart") then
+            obj.Color = Color3.fromRGB(125,125,125)
+            obj.Material = Enum.Material.SmoothPlastic
+        end
+    end)
+end
+
+function Cleaner:ProcessObj(obj)
+    if Config.RemoveParticles and self:IsEffect(obj) then
+        if math.random() < Config.EffectDisableRate then
+            self:DisableEffect(obj)
+        end
+    end
+
+    if Config.GrayScaleWorld then
+        self:GrayPart(obj)
+    end
+end
+
+function Cleaner:ProcessTerrain()
+    pcall(function()
+        local t = workspace.Terrain
+        t:FillRegion(Region3.new(t.MaxExtents.Min, t.MaxExtents.Max), Enum.Material.Slate, Color3.fromRGB(120,120,120))
+    end)
+end
+
+--=================================================
+-- RUN
+--=================================================
+
+-- First pass apply to existing objects
+for _, obj in ipairs(game:GetDescendants()) do
+    Cleaner:ProcessObj(obj)
+end
+
+-- If terrain grayscale is on
+if Config.GrayScaleTerrain then
+    Cleaner:ProcessTerrain()
+end
+
+-- Keep auto-processing new objects
+game.DescendantAdded:Connect(function(obj)
+    Cleaner:ProcessObj(obj)
 end)
-
-print("Low FX + Grayscale Loaded (Non Conflict Mode)")
