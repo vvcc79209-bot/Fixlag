@@ -1,76 +1,90 @@
+local KEEP_SKY = true
 local GRAY = Color3.fromRGB(120,120,120)
 
 local Effects = {
-    ParticleEmitter=true, Trail=true, Beam=true,
-    Fire=true, Smoke=true, Sparkles=true,
-    Highlight=true, PointLight=true,
-    SpotLight=true, SurfaceLight=true
+    ParticleEmitter=true,
+    Trail=true,
+    Beam=true,
+    Fire=true,
+    Smoke=true,
+    Sparkles=true,
+    Explosion=true,
+    Highlight=true,
+    PointLight=true,
+    SpotLight=true,
+    SurfaceLight=true
 }
 
-local function IsProtected(obj)
+-- ✅ kiểm tra object hệ thống
+local function IsSystem(obj)
+
     if obj:IsA("SpawnLocation") then return true end
     if obj:IsA("ProximityPrompt") then return true end
     if obj:IsA("TouchTransmitter") then return true end
     if obj:IsA("BillboardGui") then return true end
     if obj:IsA("SurfaceGui") then return true end
 
-    local model = obj:FindFirstAncestorOfClass("Model")
-    if model and model:FindFirstChildOfClass("Humanoid") then
-        return true
-    end
-
-    -- không thay color nếu part *invisible*
-    if obj:IsA("BasePart") and obj.Transparency >= 0.9 then
+    local name = string.lower(obj.Name)
+    if string.find(name,"spawn")
+    or string.find(name,"teleport")
+    or string.find(name,"island")
+    or string.find(name,"safe") then
         return true
     end
 
     return false
 end
 
-local function Clean(obj)
-    if IsProtected(obj) then return end
+-- ✅ xoá aura accessory
+local function RemoveAuraAccessory(obj)
+
+    if obj:IsA("Accessory") then
+        
+        local name = string.lower(obj.Name)
+
+        if string.find(name,"aura")
+        or string.find(name,"effect")
+        or string.find(name,"fx")
+        or string.find(name,"glow") then
+            pcall(function() obj:Destroy() end)
+            return true
+        end
+
+        for _,v in pairs(obj:GetDescendants()) do
+            if Effects[v.ClassName] then
+                pcall(function() obj:Destroy() end)
+                return true
+            end
+        end
+    end
+
+    return false
+end
+
+-- ✅ xử lý object
+local function Process(obj)
+
+    if KEEP_SKY and obj:IsA("Sky") then return end
+    if IsSystem(obj) then return end
+
+    if RemoveAuraAccessory(obj) then return end
 
     if Effects[obj.ClassName] then
         pcall(function() obj:Destroy() end)
         return
     end
 
-    if obj:IsA("SpecialMesh") then
-        pcall(function() obj:Destroy() end)
-    end
-
-    -- chỉ đổi color nếu part có *Mesh/union/visual*
-    if obj:IsA("BasePart") and obj:FindFirstChildWhichIsA("Mesh") then
+    if obj:IsA("BasePart") then
         obj.Color = GRAY
         obj.Material = Enum.Material.SmoothPlastic
     end
 end
 
 for _,v in pairs(game:GetDescendants()) do
-    Clean(v)
+    Process(v)
 end
 
 game.DescendantAdded:Connect(function(v)
     task.wait()
-    Clean(v)
+    Process(v)
 end)
-
-local player = game.Players.LocalPlayer
-
-local function RemoveAccessories(char)
-    for _,v in pairs(char:GetChildren()) do
-        if v:IsA("Accessory") then
-            v:Destroy()
-        end
-    end
-end
-
-local function SetupChar(char)
-    task.wait(1)
-    RemoveAccessories(char)
-end
-
-if player.Character then
-    SetupChar(player.Character)
-end
-player.CharacterAdded:Connect(SetupChar)
