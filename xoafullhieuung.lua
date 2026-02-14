@@ -24,6 +24,36 @@ local function IsSystem(obj)
     return false
 end
 
+local function IsSkill(obj)
+    if obj:IsDescendantOf(workspace.Characters) then return false end
+
+    if obj:IsA("Model")
+    or obj:IsA("MeshPart")
+    or obj:IsA("Part")
+    or obj:IsA("Attachment") then
+
+        local n = obj.Name:lower()
+
+        if n:find("fx")
+        or n:find("effect")
+        or n:find("hit")
+        or n:find("slash")
+        or n:find("boom")
+        or n:find("impact")
+        or n:find("dash")
+        or n:find("flash")
+        or n:find("skill")
+        or n:find("attack")
+        or n:find("transform")
+        or n:find("mode")
+        or n:find("aura") then
+            return true
+        end
+    end
+
+    return false
+end
+
 local function Clean(obj)
 
     if KEEP_SKY and obj:IsA("Sky") then return end
@@ -34,38 +64,28 @@ local function Clean(obj)
         return
     end
 
-    -- xoá sound đánh
+    -- xoá sound skill
     if obj:IsA("Sound") then
         obj:Destroy()
         return
     end
 
-    -- xoá animation effect
+    -- xoá animation
     if obj:IsA("Animation") then
         obj:Destroy()
         return
     end
 
-    -- xoá toàn bộ class hiệu ứng
+    -- xoá class hiệu ứng
     if Effects[obj.ClassName] then
         obj:Destroy()
         return
     end
 
-    -- xoá model effect
-    if not IsSystem(obj) then
-        local name = obj.Name:lower()
-        if name:find("fx")
-        or name:find("effect")
-        or name:find("hit")
-        or name:find("slash")
-        or name:find("boom")
-        or name:find("impact")
-        or name:find("dash")
-        or name:find("flash") then
-            obj:Destroy()
-            return
-        end
+    -- xoá mọi model skill
+    if IsSkill(obj) and not IsSystem(obj) then
+        obj:Destroy()
+        return
     end
 
     -- map xám
