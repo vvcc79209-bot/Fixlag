@@ -2,7 +2,7 @@
 local KEEP_SKY = true
 local GRAY = Color3.fromRGB(120,120,120)
 
---// EFFECT LIST
+--// FULL EFFECT CLASS
 local Effects = {
     ParticleEmitter=true,
     Trail=true,
@@ -17,7 +17,14 @@ local Effects = {
     SurfaceLight=true
 }
 
---// CHECK SYSTEM OBJECT
+--// KEYWORD EFFECT SKILL
+local SkillNames = {
+    "fx","effect","vfx","hit","slash","punch","smoke",
+    "dash","flash","shock","aura","haki","transform",
+    "attack","skill","boom","impact"
+}
+
+--// SYSTEM CHECK (anti lỗi đảo)
 local function IsSystem(obj)
     if obj:IsDescendantOf(game:GetService("Players")) then return true end
     if obj:IsA("SpawnLocation") then return true end
@@ -28,21 +35,54 @@ local function IsSystem(obj)
     return false
 end
 
---// REMOVE EFFECT
+--// CHECK SKILL OBJECT
+local function IsSkillObject(obj)
+    local name = obj.Name:lower()
+    for _,k in pairs(SkillNames) do
+        if name:find(k) then
+            return true
+        end
+    end
+    return false
+end
+
+--// CLEAN OBJECT
 local function Clean(obj)
 
-    if Effects[obj.ClassName] then
-        obj:Destroy()
-        return
-    end
+    -- giữ bầu trời
+    if KEEP_SKY and obj:IsA("Sky") then return end
 
-    -- xoá phụ kiện nhân vật
+    -- xoá phụ kiện
     if obj:IsA("Accessory") then
         obj:Destroy()
         return
     end
 
-    -- đổi map sang xám SAFE (không lỗi đảo)
+    -- xoá sound skill
+    if obj:IsA("Sound") and IsSkillObject(obj) then
+        obj:Destroy()
+        return
+    end
+
+    -- xoá animation rác
+    if obj:IsA("Animation") then
+        obj:Destroy()
+        return
+    end
+
+    -- xoá toàn bộ class hiệu ứng
+    if Effects[obj.ClassName] then
+        obj:Destroy()
+        return
+    end
+
+    -- xoá model skill
+    if IsSkillObject(obj) and not IsSystem(obj) then
+        obj:Destroy()
+        return
+    end
+
+    -- đổi map xám an toàn
     if obj:IsA("BasePart")
     and not IsSystem(obj)
     and obj.Transparency < 0.8
@@ -53,17 +93,18 @@ local function Clean(obj)
     end
 end
 
---// RUN
+--// RUN FIRST
 for _,v in pairs(workspace:GetDescendants()) do
     pcall(Clean,v)
 end
 
+--// RUN REALTIME
 workspace.DescendantAdded:Connect(function(v)
     task.wait()
     pcall(Clean,v)
 end)
 
---// SKY
+--// SKY REMOVE OPTION
 if not KEEP_SKY then
     local sky = game:GetService("Lighting"):FindFirstChildOfClass("Sky")
     if sky then sky:Destroy() end
