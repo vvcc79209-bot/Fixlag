@@ -1,83 +1,73 @@
---// TỶ LỆ XOÁ HIỆU ỨNG
+local KEEP_SKY = true
+local GRAY = Color3.fromRGB(120,120,120)
+
+-- thêm tỉ lệ xoá
 local REMOVE_PERCENT = 0.98
 
 local Effects = {
-    ParticleEmitter=true,
-    Trail=true,
-    Beam=true,
-    Fire=true,
-    Smoke=true,
-    Sparkles=true,
-    Explosion=true,
-    Highlight=true,
-    PointLight=true,
-    SpotLight=true,
-    SurfaceLight=true
+ParticleEmitter=true,
+Trail=true,
+Beam=true,
+Fire=true,
+Smoke=true,
+Sparkles=true,
+Explosion=true,
+Highlight=true,
+PointLight=true,
+SpotLight=true,
+SurfaceLight=true
 }
 
-local function IsSkillName(obj)
-    local n = obj.Name:lower()
-    if n:find("fx")
-    or n:find("effect")
-    or n:find("hit")
-    or n:find("slash")
-    or n:find("impact")
-    or n:find("boom")
-    or n:find("dash")
-    or n:find("flash")
-    or n:find("skill")
-    or n:find("attack")
-    or n:find("aura")
-    or n:find("mode")
-    or n:find("transform") then
-        return true
-    end
-    return false
+local function IsSystem(obj)
+
+if obj:IsA("SpawnLocation") then return true end
+if obj:IsA("ProximityPrompt") then return true end
+if obj:IsA("TouchTransmitter") then return true end
+if obj:IsA("BillboardGui") then return true end
+if obj:IsA("SurfaceGui") then return true end
+
+local name = string.lower(obj.Name)
+if string.find(name,"spawn")
+or string.find(name,"teleport")
+or string.find(name,"island")
+or string.find(name,"safe") then
+return true
 end
 
-local function Clean(obj)
-
-    -- random giữ lại ~2%
-    local function ShouldRemove()
-        return math.random() < REMOVE_PERCENT
-    end
-
-    -- xoá phụ kiện
-    if obj:IsA("Accessory") and ShouldRemove() then
-        obj:Destroy()
-        return
-    end
-
-    -- xoá sound skill
-    if obj:IsA("Sound") and ShouldRemove() then
-        obj:Destroy()
-        return
-    end
-
-    -- xoá animation effect
-    if obj:IsA("Animation") and ShouldRemove() then
-        obj:Destroy()
-        return
-    end
-
-    -- xoá class hiệu ứng
-    if Effects[obj.ClassName] and ShouldRemove() then
-        obj:Destroy()
-        return
-    end
-
-    -- xoá model skill
-    if IsSkillName(obj) and ShouldRemove() then
-        obj:Destroy()
-        return
-    end
+local model = obj:FindFirstAncestorOfClass("Model")
+if model and model:FindFirstChildOfClass("Humanoid") then
+return true
 end
 
-for _,v in pairs(workspace:GetDescendants()) do
-    pcall(Clean,v)
+return false
+
 end
 
-workspace.DescendantAdded:Connect(function(v)
-    task.wait()
-    pcall(Clean,v)
+local function Process(obj)
+
+if KEEP_SKY and obj:IsA("Sky") then return end
+if IsSystem(obj) then return end
+
+-- chỉ thêm random 98%
+if Effects[obj.ClassName] then
+if math.random() < REMOVE_PERCENT then
+pcall(function() obj:Destroy() end)
+end
+return
+end
+
+if obj:IsA("BasePart") then
+obj.Color = GRAY
+obj.Material = Enum.Material.SmoothPlastic
+end
+
+end
+
+for _,v in pairs(game:GetDescendants()) do
+Process(v)
+end
+
+game.DescendantAdded:Connect(function(v)
+task.wait()
+Process(v)
 end)
