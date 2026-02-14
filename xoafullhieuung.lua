@@ -1,9 +1,6 @@
 local KEEP_SKY = true
 local GRAY = Color3.fromRGB(120,120,120)
 
--- thêm tỉ lệ xoá
-local REMOVE_PERCENT = 0.98
-
 local Effects = {
 ParticleEmitter=true,
 Trail=true,
@@ -48,11 +45,9 @@ local function Process(obj)
 if KEEP_SKY and obj:IsA("Sky") then return end
 if IsSystem(obj) then return end
 
--- chỉ thêm random 98%
+-- xoá 100% hiệu ứng
 if Effects[obj.ClassName] then
-if math.random() < REMOVE_PERCENT then
 pcall(function() obj:Destroy() end)
-end
 return
 end
 
