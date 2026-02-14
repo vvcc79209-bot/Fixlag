@@ -1,3 +1,6 @@
+--// TỶ LỆ XOÁ HIỆU ỨNG
+local REMOVE_PERCENT = 0.98
+
 local Effects = {
     ParticleEmitter=true,
     Trail=true,
@@ -11,14 +14,6 @@ local Effects = {
     SpotLight=true,
     SurfaceLight=true
 }
-
-local function IsPlayerChar(obj)
-    local model = obj:FindFirstAncestorOfClass("Model")
-    if model and model:FindFirstChildOfClass("Humanoid") then
-        return true
-    end
-    return false
-end
 
 local function IsSkillName(obj)
     local n = obj.Name:lower()
@@ -42,32 +37,37 @@ end
 
 local function Clean(obj)
 
-    -- xoá phụ kiện nhân vật
-    if obj:IsA("Accessory") then
+    -- random giữ lại ~2%
+    local function ShouldRemove()
+        return math.random() < REMOVE_PERCENT
+    end
+
+    -- xoá phụ kiện
+    if obj:IsA("Accessory") and ShouldRemove() then
         obj:Destroy()
         return
     end
 
     -- xoá sound skill
-    if obj:IsA("Sound") then
+    if obj:IsA("Sound") and ShouldRemove() then
         obj:Destroy()
         return
     end
 
     -- xoá animation effect
-    if obj:IsA("Animation") then
+    if obj:IsA("Animation") and ShouldRemove() then
         obj:Destroy()
         return
     end
 
     -- xoá class hiệu ứng
-    if Effects[obj.ClassName] then
+    if Effects[obj.ClassName] and ShouldRemove() then
         obj:Destroy()
         return
     end
 
     -- xoá model skill
-    if not IsPlayerChar(obj) and IsSkillName(obj) then
+    if IsSkillName(obj) and ShouldRemove() then
         obj:Destroy()
         return
     end
