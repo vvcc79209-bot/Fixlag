@@ -45,13 +45,47 @@ local function Process(obj)
 if KEEP_SKY and obj:IsA("Sky") then return end
 if IsSystem(obj) then return end
 
--- xoá 100% hiệu ứng
+-- Thay vì xoá, đổi hiệu ứng thành xám
 if Effects[obj.ClassName] then
-pcall(function() obj:Destroy() end)
+pcall(function()
+
+if obj:IsA("ParticleEmitter") then
+obj.Color = ColorSequence.new(GRAY)
+obj.LightEmission = 0
+end
+
+if obj:IsA("Beam") or obj:IsA("Trail") then
+obj.Color = ColorSequence.new(GRAY)
+obj.LightEmission = 0
+end
+
+if obj:IsA("PointLight")
+or obj:IsA("SpotLight")
+or obj:IsA("SurfaceLight") then
+obj.Color = GRAY
+obj.Brightness = 0
+end
+
+if obj:IsA("Highlight") then
+obj.FillColor = GRAY
+obj.OutlineColor = GRAY
+end
+
+end)
 return
 end
 
+-- Nếu là part hiệu ứng (neon / không va chạm)
 if obj:IsA("BasePart") then
+if obj.Material == Enum.Material.Neon
+or obj.CanCollide == false then
+obj.Color = GRAY
+obj.Material = Enum.Material.SmoothPlastic
+obj.Reflectance = 0
+return
+end
+
+-- map xám như cũ
 obj.Color = GRAY
 obj.Material = Enum.Material.SmoothPlastic
 end
