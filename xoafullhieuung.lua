@@ -1,6 +1,3 @@
-local KEEP_SKY = true
-local GRAY = Color3.fromRGB(120,120,120)
-
 local Effects = {
     ParticleEmitter=true,
     Trail=true,
@@ -15,50 +12,37 @@ local Effects = {
     SurfaceLight=true
 }
 
-local function IsSystem(obj)
-    if obj:IsDescendantOf(game.Players) then return true end
-    if obj:IsA("SpawnLocation") then return true end
-    if obj.Name:lower():find("spawn") then return true end
-    if obj.Name:lower():find("safe") then return true end
-    if obj.Name:lower():find("teleport") then return true end
+local function IsPlayerChar(obj)
+    local model = obj:FindFirstAncestorOfClass("Model")
+    if model and model:FindFirstChildOfClass("Humanoid") then
+        return true
+    end
     return false
 end
 
-local function IsSkill(obj)
-    if obj:IsDescendantOf(workspace.Characters) then return false end
-
-    if obj:IsA("Model")
-    or obj:IsA("MeshPart")
-    or obj:IsA("Part")
-    or obj:IsA("Attachment") then
-
-        local n = obj.Name:lower()
-
-        if n:find("fx")
-        or n:find("effect")
-        or n:find("hit")
-        or n:find("slash")
-        or n:find("boom")
-        or n:find("impact")
-        or n:find("dash")
-        or n:find("flash")
-        or n:find("skill")
-        or n:find("attack")
-        or n:find("transform")
-        or n:find("mode")
-        or n:find("aura") then
-            return true
-        end
+local function IsSkillName(obj)
+    local n = obj.Name:lower()
+    if n:find("fx")
+    or n:find("effect")
+    or n:find("hit")
+    or n:find("slash")
+    or n:find("impact")
+    or n:find("boom")
+    or n:find("dash")
+    or n:find("flash")
+    or n:find("skill")
+    or n:find("attack")
+    or n:find("aura")
+    or n:find("mode")
+    or n:find("transform") then
+        return true
     end
-
     return false
 end
 
 local function Clean(obj)
 
-    if KEEP_SKY and obj:IsA("Sky") then return end
-
-    -- xoá phụ kiện
+    -- xoá phụ kiện nhân vật
     if obj:IsA("Accessory") then
         obj:Destroy()
         return
@@ -70,7 +54,7 @@ local function Clean(obj)
         return
     end
 
-    -- xoá animation
+    -- xoá animation effect
     if obj:IsA("Animation") then
         obj:Destroy()
         return
@@ -82,20 +66,10 @@ local function Clean(obj)
         return
     end
 
-    -- xoá mọi model skill
-    if IsSkill(obj) and not IsSystem(obj) then
+    -- xoá model skill
+    if not IsPlayerChar(obj) and IsSkillName(obj) then
         obj:Destroy()
         return
-    end
-
-    -- map xám
-    if obj:IsA("BasePart")
-    and not IsSystem(obj)
-    and obj.Transparency < 0.8
-    and obj.CanCollide then
-
-        obj.Color = GRAY
-        obj.Material = Enum.Material.SmoothPlastic
     end
 end
 
