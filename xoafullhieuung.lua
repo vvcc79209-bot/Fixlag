@@ -32,24 +32,18 @@ local KEEP_SKY = true
 local GRAY = Color3.fromRGB(120,120,120)
 
 local Effects = {
-ParticleEmitter=true,
-Trail=true,
-Beam=true,
-Fire=true,
-Smoke=true,
-Sparkles=true,
-Explosion=true,
-Highlight=true,
-PointLight=true,
-SpotLight=true,
-SurfaceLight=true,
-
--- thêm hiệu ứng dư thừa
-Attachment=true,
-Decal=true,
-Texture=true,
-SpecialMesh=true,
-Sound=true
+    ParticleEmitter=true,
+    Trail=true,
+    Beam=true,
+    Fire=true,
+    Smoke=true,
+    Sparkles=true,
+    Explosion=true,
+    Highlight=true,
+    PointLight=true,
+    SpotLight=true,
+    SurfaceLight=true,
+    Sound=true -- ✔ đây là phần thêm để xoá hiệu ứng âm thanh dư thừa
 }
 
 local function IsSystem(obj)
@@ -76,16 +70,19 @@ if not model:FindFirstChildOfClass("Humanoid") then return end
 
 for _,v in pairs(model:GetDescendants()) do  
       
+    -- xoá phụ kiện  
     if v:IsA("Accessory") then  
         pcall(function() v:Destroy() end)  
     end  
 
+    -- body thành màu xám  
     if v:IsA("BasePart") then  
         v.Color = GRAY  
         v.Material = Enum.Material.SmoothPlastic  
         v.Reflectance = 0  
     end  
 
+    -- tắt hiệu ứng còn sót  
     if Effects[v.ClassName] then  
         pcall(function()  
             if v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Beam") then  
@@ -95,6 +92,7 @@ for _,v in pairs(model:GetDescendants()) do
         end)  
     end  
 end
+
 end
 
 local function Process(obj)
@@ -102,6 +100,7 @@ local function Process(obj)
 if KEEP_SKY and obj:IsA("Sky") then return end  
 if IsSystem(obj) then return end  
 
+-- xoá hiệu ứng  
 if Effects[obj.ClassName] then  
     pcall(function()  
         if obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Beam") then  
@@ -112,6 +111,7 @@ if Effects[obj.ClassName] then
     return  
 end  
 
+-- xoá cây / decor  
 if obj:IsA("Model") then  
     local name = string.lower(obj.Name)  
     if string.find(name,"tree")  
@@ -124,23 +124,28 @@ if obj:IsA("Model") then
     end  
 end  
 
+-- basepart thành xám  
 if obj:IsA("BasePart") then  
     obj.Color = GRAY  
     obj.Material = Enum.Material.SmoothPlastic  
     obj.Reflectance = 0  
 end  
 
+-- npc + player  
 local model = obj:FindFirstAncestorOfClass("Model")  
 if model and model:FindFirstChildOfClass("Humanoid") then  
     ProcessCharacter(model)  
 end
+
 end
 
+-- chạy lần đầu
 for _,v in pairs(game:GetDescendants()) do
-Process(v)
+    Process(v)
 end
 
+-- xử lý object mới
 game.DescendantAdded:Connect(function(v)
-task.wait()
-Process(v)
+    task.wait()
+    Process(v)
 end)
