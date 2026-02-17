@@ -69,19 +69,16 @@ local function ProcessCharacter(model)
 
     for _,v in pairs(model:GetDescendants()) do
         
-        -- xoá phụ kiện
         if v:IsA("Accessory") then
             pcall(function() v:Destroy() end)
         end
 
-        -- body thành màu xám
         if v:IsA("BasePart") then
             v.Color = GRAY
             v.Material = Enum.Material.SmoothPlastic
             v.Reflectance = 0
         end
 
-        -- tắt hiệu ứng còn sót
         if Effects[v.ClassName] then
             pcall(function()
                 if v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Beam") then
@@ -98,7 +95,6 @@ local function Process(obj)
     if KEEP_SKY and obj:IsA("Sky") then return end
     if IsSystem(obj) then return end
 
-    -- xoá hiệu ứng
     if Effects[obj.ClassName] then
         pcall(function()
             if obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Beam") then
@@ -109,7 +105,6 @@ local function Process(obj)
         return
     end
 
-    -- xoá cây / decor
     if obj:IsA("Model") then
         local name = string.lower(obj.Name)
         if string.find(name,"tree")
@@ -122,27 +117,68 @@ local function Process(obj)
         end
     end
 
-    -- basepart thành xám
     if obj:IsA("BasePart") then
         obj.Color = GRAY
         obj.Material = Enum.Material.SmoothPlastic
         obj.Reflectance = 0
     end
 
-    -- npc + player
     local model = obj:FindFirstAncestorOfClass("Model")
     if model and model:FindFirstChildOfClass("Humanoid") then
         ProcessCharacter(model)
     end
 end
 
--- chạy lần đầu
 for _,v in pairs(game:GetDescendants()) do
     Process(v)
 end
 
--- xử lý object mới
 game.DescendantAdded:Connect(function(v)
     task.wait()
     Process(v)
+end)
+
+-- =========================
+-- 💨 REMOVE EXTRA SKILL VFX (THÊM VÀO)
+-- =========================
+
+local function RemoveExtraEffects(obj)
+
+    local name = string.lower(obj.Name)
+
+    if string.find(name,"portal")
+    or string.find(name,"vortex")
+    or string.find(name,"ring")
+    or string.find(name,"shock")
+    or string.find(name,"energy")
+    or string.find(name,"slash")
+    or string.find(name,"vfx")
+    or string.find(name,"effect")
+    or string.find(name,"aura") then
+        pcall(function() obj:Destroy() end)
+        return
+    end
+
+    if obj:IsA("ParticleEmitter")
+    or obj:IsA("Trail")
+    or obj:IsA("Beam") then
+        pcall(function()
+            obj.Enabled = false
+            obj:Destroy()
+        end)
+        return
+    end
+
+    if obj:IsA("BasePart") and obj.Material == Enum.Material.Neon then
+        obj.Transparency = 1
+    end
+end
+
+for _,v in pairs(workspace:GetDescendants()) do
+    RemoveExtraEffects(v)
+end
+
+workspace.DescendantAdded:Connect(function(v)
+    task.wait()
+    RemoveExtraEffects(v)
 end)
