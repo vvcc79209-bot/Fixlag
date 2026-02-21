@@ -46,27 +46,20 @@ local Effects = {
     Sound=true
 }
 
-local SAFE_OBJECTS = {
-    ["Leviathan"] = true,
-    ["SeaBeast"] = true,
-    ["Levi"] = true,
-    ["SeaEvent"] = true
+-- từ khoá xoá cây / nhà / decor
+local REMOVE_KEYWORDS = {
+    "tree","plant","bush","grass",
+    "rock","stone","leaf",
+    "house","home","building","hut",
+    "wall","fence","gate",
+    "statue","pillar","tower",
+    "decor","detail","prop",
+    "market","shop","cart"
 }
 
-local function IsSafe(obj)
-    for name,_ in pairs(SAFE_OBJECTS) do
-        if string.find(obj.Name, name) then
-            return true
-        end
-    end
-    return false
-end
-
-local function IsWater(obj)
-    if obj:IsA("Terrain") then return true end
-    if string.find(string.lower(obj.Name),"water") then return true end
-    return false
-end
+-- =========================
+-- 🔍 CHECK SYSTEM
+-- =========================
 
 local function IsSystem(obj)
     if obj:IsA("SpawnLocation") then return true end
@@ -75,11 +68,16 @@ local function IsSystem(obj)
     if obj:IsA("BillboardGui") then return true end
     if obj:IsA("SurfaceGui") then return true end
 
+    if obj:IsA("Humanoid") then return true end
+    if obj:FindFirstChildOfClass("Humanoid") then return true end
+
     local name = string.lower(obj.Name)
+
     if string.find(name,"spawn")
-    or string.find(name,"teleport")
     or string.find(name,"safe")
-    or string.find(name,"zone") then
+    or string.find(name,"zone")
+    or string.find(name,"arena")
+    or string.find(name,"boss") then
         return true
     end
 
@@ -87,34 +85,32 @@ local function IsSystem(obj)
 end
 
 -- =========================
--- 👤 CHARACTER PROCESS
+-- 👤 PROCESS CHARACTER
 -- =========================
 
 local function ProcessCharacter(model)
     if not model:FindFirstChildOfClass("Humanoid") then return end
-    if IsSafe(model) then return end
 
     for _,v in pairs(model:GetDescendants()) do
-
-        -- Xoá phụ kiện mạnh
-        if v:IsA("Accessory")
-        or v:IsA("Hat")
-        or v:IsA("HairAccessory")
-        or v:IsA("BackAccessory")
-        or v:IsA("FaceAccessory")
-        or v:IsA("WaistAccessory") then
+        
+        -- xoá phụ kiện
+        if v:IsA("Accessory") then
             pcall(function() v:Destroy() end)
         end
 
+        -- body thành màu xám
         if v:IsA("BasePart") then
             v.Color = GRAY
             v.Material = Enum.Material.SmoothPlastic
             v.Reflectance = 0
         end
 
+        -- xoá hiệu ứng
         if Effects[v.ClassName] then
             pcall(function()
-                if v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Beam") then
+                if v:IsA("ParticleEmitter")
+                or v:IsA("Trail")
+                or v:IsA("Beam") then
                     v.Enabled = false
                 end
                 v:Destroy()
@@ -124,19 +120,44 @@ local function ProcessCharacter(model)
 end
 
 -- =========================
--- 🌍 WORLD PROCESS
+-- 🌳 CHECK XOÁ MAP
+-- =========================
+
+local function ShouldDeleteModel(obj)
+    if not obj:IsA("Model") then return false end
+    if IsSystem(obj) then return false end
+
+    local name = string.lower(obj.Name)
+    for _,word in pairs(REMOVE_KEYWORDS) do
+        if string.find(name,word) then
+            return true
+        end
+    end
+
+    return false
+end
+
+-- =========================
+-- ⚡ MAIN PROCESS
 -- =========================
 
 local function Process(obj)
 
     if KEEP_SKY and obj:IsA("Sky") then return end
     if IsSystem(obj) then return end
-    if IsSafe(obj) then return end
-    if IsWater(obj) then return end
 
+    -- xoá cây / nhà / decor
+    if ShouldDeleteModel(obj) then
+        pcall(function() obj:Destroy() end)
+        return
+    end
+
+    -- xoá hiệu ứng
     if Effects[obj.ClassName] then
         pcall(function()
-            if obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Beam") then
+            if obj:IsA("ParticleEmitter")
+            or obj:IsA("Trail")
+            or obj:IsA("Beam") then
                 obj.Enabled = false
             end
             obj:Destroy()
@@ -144,45 +165,23 @@ local function Process(obj)
         return
     end
 
-    -- 🔥 XOÁ NHÀ + CÂY + DECOR
-    if obj:IsA("Model") then
-        local name = string.lower(obj.Name)
-
-        if string.find(name,"house")
-        or string.find(name,"building")
-        or string.find(name,"home")
-        or string.find(name,"roof")
-        or string.find(name,"wall")
-        or string.find(name,"door")
-        or string.find(name,"window")
-        or string.find(name,"tree")
-        or string.find(name,"plant")
-        or string.find(name,"bush")
-        or string.find(name,"grass")
-        or string.find(name,"leaf")
-        or string.find(name,"rock")
-        or string.find(name,"stone")
-        or string.find(name,"decor")
-        or string.find(name,"statue")
-        or string.find(name,"fence")
-        or string.find(name,"barrel")
-        or string.find(name,"crate") then
-            pcall(function() obj:Destroy() end)
-            return
-        end
-    end
-
+    -- basepart thành xám
     if obj:IsA("BasePart") then
         obj.Color = GRAY
         obj.Material = Enum.Material.SmoothPlastic
         obj.Reflectance = 0
     end
 
+    -- npc + player
     local model = obj:FindFirstAncestorOfClass("Model")
     if model and model:FindFirstChildOfClass("Humanoid") then
         ProcessCharacter(model)
     end
 end
+
+-- =========================
+-- 🚀 RUN
+-- =========================
 
 for _,v in pairs(game:GetDescendants()) do
     Process(v)
@@ -191,18 +190,4 @@ end
 game.DescendantAdded:Connect(function(v)
     task.wait()
     Process(v)
-end)
-
--- =========================
--- 🎥 FIX CAMERA LOCK
--- =========================
-
-local Workspace = game:GetService("Workspace")
-local RunService = game:GetService("RunService")
-
-RunService.RenderStepped:Connect(function()
-    local cam = Workspace.CurrentCamera
-    if cam and cam.CameraType == Enum.CameraType.Scriptable then
-        cam.CameraType = Enum.CameraType.Custom
-    end
 end)
