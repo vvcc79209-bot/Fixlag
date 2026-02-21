@@ -7,6 +7,8 @@ pcall(function()
 end)
 
 local Lighting = game:GetService("Lighting")
+local Workspace = game:GetService("Workspace")
+local RunService = game:GetService("RunService")
 
 Lighting.GlobalShadows = false
 Lighting.FogEnd = 1000000
@@ -25,7 +27,7 @@ for _,v in pairs(Lighting:GetDescendants()) do
 end
 
 -- =========================
--- 🎨 GRAY + DELETE EFFECT
+-- 🎨 SETTINGS
 -- =========================
 
 local KEEP_SKY = true
@@ -99,6 +101,7 @@ local function ProcessCharacter(model)
             v.Color = GRAY
             v.Material = Enum.Material.SmoothPlastic
             v.Reflectance = 0
+            v.CastShadow = false
         end
 
         if Effects[v.ClassName] then
@@ -112,6 +115,10 @@ local function ProcessCharacter(model)
     end
 end
 
+-- =========================
+-- 🚀 MAIN PROCESS
+-- =========================
+
 local function Process(obj)
 
     if KEEP_SKY and obj:IsA("Sky") then return end
@@ -119,6 +126,7 @@ local function Process(obj)
     if IsSafe(obj) then return end
     if IsWater(obj) then return end
 
+    -- XÓA EFFECT
     if Effects[obj.ClassName] then
         pcall(function()
             if obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Beam") then
@@ -129,22 +137,39 @@ local function Process(obj)
         return
     end
 
+    -- XÓA CÂY + TRANG TRÍ
     if obj:IsA("Model") then
         local name = string.lower(obj.Name)
+
         if string.find(name,"tree")
         or string.find(name,"plant")
         or string.find(name,"bush")
         or string.find(name,"rock")
+        or string.find(name,"grass")
+        or string.find(name,"leaf")
         or string.find(name,"decor") then
+            pcall(function() obj:Destroy() end)
+            return
+        end
+
+        -- XÓA NHÀ / BUILDING
+        if string.find(name,"house")
+        or string.find(name,"building")
+        or string.find(name,"village")
+        or string.find(name,"city")
+        or string.find(name,"home")
+        or string.find(name,"hut") then
             pcall(function() obj:Destroy() end)
             return
         end
     end
 
+    -- GIẢM CHI TIẾT PART
     if obj:IsA("BasePart") then
         obj.Color = GRAY
         obj.Material = Enum.Material.SmoothPlastic
         obj.Reflectance = 0
+        obj.CastShadow = false
     end
 
     local model = obj:FindFirstAncestorOfClass("Model")
@@ -154,18 +179,14 @@ local function Process(obj)
 end
 
 -- =========================
--- 🚀 SMART ANTI FREEZE
+-- 🧠 SMART ANTI FREEZE
 -- =========================
-
-local Workspace = game:GetService("Workspace")
 
 task.spawn(function()
     local objects = Workspace:GetDescendants()
     for i = 1, #objects do
         Process(objects[i])
-
-        -- giảm spike CPU
-        if i % 100 == 0 then
+        if i % 80 == 0 then
             task.wait()
         end
     end
@@ -178,10 +199,8 @@ Workspace.DescendantAdded:Connect(function(v)
 end)
 
 -- =========================
--- 🎥 FIX CAMERA LOCK
+-- 🎥 FIX CAMERA
 -- =========================
-
-local RunService = game:GetService("RunService")
 
 RunService.RenderStepped:Connect(function()
     local cam = Workspace.CurrentCamera
