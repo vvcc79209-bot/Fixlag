@@ -7,8 +7,6 @@ pcall(function()
 end)
 
 local Lighting = game:GetService("Lighting")
-local Workspace = game:GetService("Workspace")
-local RunService = game:GetService("RunService")
 
 Lighting.GlobalShadows = false
 Lighting.FogEnd = 1000000
@@ -27,7 +25,7 @@ for _,v in pairs(Lighting:GetDescendants()) do
 end
 
 -- =========================
--- 🎨 SETTINGS
+-- 🎨 GRAY + DELETE EFFECT
 -- =========================
 
 local KEEP_SKY = true
@@ -66,7 +64,7 @@ end
 
 local function IsWater(obj)
     if obj:IsA("Terrain") then return true end
-    if string.find(string.lower(obj.Name), "water") then return true end
+    if string.find(string.lower(obj.Name),"water") then return true end
     return false
 end
 
@@ -88,12 +86,23 @@ local function IsSystem(obj)
     return false
 end
 
+-- =========================
+-- 👤 CHARACTER PROCESS
+-- =========================
+
 local function ProcessCharacter(model)
     if not model:FindFirstChildOfClass("Humanoid") then return end
     if IsSafe(model) then return end
 
     for _,v in pairs(model:GetDescendants()) do
-        if v:IsA("Accessory") then
+
+        -- Xoá phụ kiện mạnh
+        if v:IsA("Accessory")
+        or v:IsA("Hat")
+        or v:IsA("HairAccessory")
+        or v:IsA("BackAccessory")
+        or v:IsA("FaceAccessory")
+        or v:IsA("WaistAccessory") then
             pcall(function() v:Destroy() end)
         end
 
@@ -101,7 +110,6 @@ local function ProcessCharacter(model)
             v.Color = GRAY
             v.Material = Enum.Material.SmoothPlastic
             v.Reflectance = 0
-            v.CastShadow = false
         end
 
         if Effects[v.ClassName] then
@@ -116,7 +124,7 @@ local function ProcessCharacter(model)
 end
 
 -- =========================
--- 🚀 MAIN PROCESS
+-- 🌍 WORLD PROCESS
 -- =========================
 
 local function Process(obj)
@@ -126,7 +134,6 @@ local function Process(obj)
     if IsSafe(obj) then return end
     if IsWater(obj) then return end
 
-    -- XÓA EFFECT
     if Effects[obj.ClassName] then
         pcall(function()
             if obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Beam") then
@@ -137,39 +144,38 @@ local function Process(obj)
         return
     end
 
-    -- XÓA CÂY + TRANG TRÍ
+    -- 🔥 XOÁ NHÀ + CÂY + DECOR
     if obj:IsA("Model") then
         local name = string.lower(obj.Name)
 
-        if string.find(name,"tree")
-        or string.find(name,"plant")
-        or string.find(name,"bush")
-        or string.find(name,"rock")
-        or string.find(name,"grass")
-        or string.find(name,"leaf")
-        or string.find(name,"decor") then
-            pcall(function() obj:Destroy() end)
-            return
-        end
-
-        -- XÓA NHÀ / BUILDING
         if string.find(name,"house")
         or string.find(name,"building")
-        or string.find(name,"village")
-        or string.find(name,"city")
         or string.find(name,"home")
-        or string.find(name,"hut") then
+        or string.find(name,"roof")
+        or string.find(name,"wall")
+        or string.find(name,"door")
+        or string.find(name,"window")
+        or string.find(name,"tree")
+        or string.find(name,"plant")
+        or string.find(name,"bush")
+        or string.find(name,"grass")
+        or string.find(name,"leaf")
+        or string.find(name,"rock")
+        or string.find(name,"stone")
+        or string.find(name,"decor")
+        or string.find(name,"statue")
+        or string.find(name,"fence")
+        or string.find(name,"barrel")
+        or string.find(name,"crate") then
             pcall(function() obj:Destroy() end)
             return
         end
     end
 
-    -- GIẢM CHI TIẾT PART
     if obj:IsA("BasePart") then
         obj.Color = GRAY
         obj.Material = Enum.Material.SmoothPlastic
         obj.Reflectance = 0
-        obj.CastShadow = false
     end
 
     local model = obj:FindFirstAncestorOfClass("Model")
@@ -178,29 +184,21 @@ local function Process(obj)
     end
 end
 
--- =========================
--- 🧠 SMART ANTI FREEZE
--- =========================
+for _,v in pairs(game:GetDescendants()) do
+    Process(v)
+end
 
-task.spawn(function()
-    local objects = Workspace:GetDescendants()
-    for i = 1, #objects do
-        Process(objects[i])
-        if i % 80 == 0 then
-            task.wait()
-        end
-    end
-end)
-
-Workspace.DescendantAdded:Connect(function(v)
-    task.defer(function()
-        Process(v)
-    end)
+game.DescendantAdded:Connect(function(v)
+    task.wait()
+    Process(v)
 end)
 
 -- =========================
--- 🎥 FIX CAMERA
+-- 🎥 FIX CAMERA LOCK
 -- =========================
+
+local Workspace = game:GetService("Workspace")
+local RunService = game:GetService("RunService")
 
 RunService.RenderStepped:Connect(function()
     local cam = Workspace.CurrentCamera
