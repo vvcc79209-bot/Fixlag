@@ -46,8 +46,6 @@ local Effects = {
     Sound=true
 }
 
--- ===== SAFE OBJECTS (LEVI FIX) =====
-
 local SAFE_OBJECTS = {
     ["Leviathan"] = true,
     ["SeaBeast"] = true,
@@ -65,12 +63,8 @@ local function IsSafe(obj)
 end
 
 local function IsWater(obj)
-    if obj:IsA("Terrain") then
-        return true
-    end
-    if string.find(string.lower(obj.Name), "water") then
-        return true
-    end
+    if obj:IsA("Terrain") then return true end
+    if string.find(string.lower(obj.Name), "water") then return true end
     return false
 end
 
@@ -97,7 +91,6 @@ local function ProcessCharacter(model)
     if IsSafe(model) then return end
 
     for _,v in pairs(model:GetDescendants()) do
-
         if v:IsA("Accessory") then
             pcall(function() v:Destroy() end)
         end
@@ -160,22 +153,34 @@ local function Process(obj)
     end
 end
 
--- chạy lần đầu
-for _,v in pairs(game:GetDescendants()) do
-    Process(v)
-end
-
--- xử lý object mới
-game.DescendantAdded:Connect(function(v)
-    task.wait()
-    Process(v)
-end)
-
 -- =========================
--- 🎥 FIX CAMERA LOCK (ANTI FREEZE LEVI)
+-- 🚀 SMART ANTI FREEZE
 -- =========================
 
 local Workspace = game:GetService("Workspace")
+
+task.spawn(function()
+    local objects = Workspace:GetDescendants()
+    for i = 1, #objects do
+        Process(objects[i])
+
+        -- giảm spike CPU
+        if i % 100 == 0 then
+            task.wait()
+        end
+    end
+end)
+
+Workspace.DescendantAdded:Connect(function(v)
+    task.defer(function()
+        Process(v)
+    end)
+end)
+
+-- =========================
+-- 🎥 FIX CAMERA LOCK
+-- =========================
+
 local RunService = game:GetService("RunService")
 
 RunService.RenderStepped:Connect(function()
