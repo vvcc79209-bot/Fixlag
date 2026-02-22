@@ -31,7 +31,6 @@ end
 local KEEP_SKY = true
 local GRAY = Color3.fromRGB(120,120,120)
 
--- hiệu ứng cần xoá
 local Effects = {
     ParticleEmitter=true,
     Trail=true,
@@ -47,15 +46,9 @@ local Effects = {
     Sound=true
 }
 
--- 🌳 từ khoá cây
+-- 🌳 chỉ xoá cây
 local TREE_KEYWORDS = {
     "tree","plant","bush","grass","leaf","wood"
-}
-
--- 🏠 từ khoá nhà
-local HOUSE_KEYWORDS = {
-    "house","home","building","hut",
-    "villa","castle","tower","room"
 }
 
 -- =========================
@@ -86,30 +79,7 @@ local function IsSystem(obj)
 end
 
 -- =========================
--- 🔎 CHECK MODEL IMPORTANT
--- =========================
-
-local function HasImportantInside(model)
-
-    if model:FindFirstChildOfClass("Humanoid") then return true end
-
-    for _,v in pairs(model:GetDescendants()) do
-        if v:IsA("SpawnLocation") then return true end
-        if v:FindFirstChildOfClass("Humanoid") then return true end
-
-        local name = string.lower(v.Name)
-        if string.find(name,"boss")
-        or string.find(name,"safe")
-        or string.find(name,"zone") then
-            return true
-        end
-    end
-
-    return false
-end
-
--- =========================
--- 🌳🏠 CHECK XOÁ MAP
+-- 🌳 CHECK XOÁ MAP (KHÔNG XOÁ NHÀ)
 -- =========================
 
 local function ShouldDeleteModel(obj)
@@ -119,19 +89,10 @@ local function ShouldDeleteModel(obj)
 
     local name = string.lower(obj.Name)
 
-    -- xoá cây 100%
+    -- chỉ xoá cây
     for _,word in pairs(TREE_KEYWORDS) do
         if string.find(name,word) then
             return true
-        end
-    end
-
-    -- xoá nhà nếu không quan trọng
-    for _,word in pairs(HOUSE_KEYWORDS) do
-        if string.find(name,word) then
-            if not HasImportantInside(obj) then
-                return true
-            end
         end
     end
 
@@ -148,19 +109,16 @@ local function ProcessCharacter(model)
 
     for _,v in pairs(model:GetDescendants()) do
 
-        -- xoá phụ kiện
         if v:IsA("Accessory") then
             pcall(function() v:Destroy() end)
         end
 
-        -- body thành màu xám
         if v:IsA("BasePart") then
             v.Color = GRAY
             v.Material = Enum.Material.SmoothPlastic
             v.Reflectance = 0
         end
 
-        -- xoá hiệu ứng
         if Effects[v.ClassName] then
             pcall(function()
                 if v:IsA("ParticleEmitter")
@@ -189,7 +147,7 @@ local function Process(obj)
         return
     end
 
-    -- xoá cây / nhà
+    -- xoá cây (không xoá nhà)
     if ShouldDeleteModel(obj) then
         pcall(function() obj:Destroy() end)
         return
