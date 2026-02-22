@@ -25,12 +25,13 @@ for _,v in pairs(Lighting:GetDescendants()) do
 end
 
 -- =========================
--- 🎨 GRAY + DELETE EFFECT
+-- 🎨 CONFIG
 -- =========================
 
 local KEEP_SKY = true
 local GRAY = Color3.fromRGB(120,120,120)
 
+-- hiệu ứng cần xoá
 local Effects = {
     ParticleEmitter=true,
     Trail=true,
@@ -46,15 +47,15 @@ local Effects = {
     Sound=true
 }
 
--- từ khoá xoá cây / nhà / decor
-local REMOVE_KEYWORDS = {
-    "tree","plant","bush","grass",
-    "rock","stone","leaf",
+-- 🌳 từ khoá cây
+local TREE_KEYWORDS = {
+    "tree","plant","bush","grass","leaf","wood"
+}
+
+-- 🏠 từ khoá nhà
+local HOUSE_KEYWORDS = {
     "house","home","building","hut",
-    "wall","fence","gate",
-    "statue","pillar","tower",
-    "decor","detail","prop",
-    "market","shop","cart"
+    "villa","castle","tower","room"
 }
 
 -- =========================
@@ -85,14 +86,68 @@ local function IsSystem(obj)
 end
 
 -- =========================
+-- 🔎 CHECK MODEL IMPORTANT
+-- =========================
+
+local function HasImportantInside(model)
+
+    if model:FindFirstChildOfClass("Humanoid") then return true end
+
+    for _,v in pairs(model:GetDescendants()) do
+        if v:IsA("SpawnLocation") then return true end
+        if v:FindFirstChildOfClass("Humanoid") then return true end
+
+        local name = string.lower(v.Name)
+        if string.find(name,"boss")
+        or string.find(name,"safe")
+        or string.find(name,"zone") then
+            return true
+        end
+    end
+
+    return false
+end
+
+-- =========================
+-- 🌳🏠 CHECK XOÁ MAP
+-- =========================
+
+local function ShouldDeleteModel(obj)
+
+    if not obj:IsA("Model") then return false end
+    if IsSystem(obj) then return false end
+
+    local name = string.lower(obj.Name)
+
+    -- xoá cây 100%
+    for _,word in pairs(TREE_KEYWORDS) do
+        if string.find(name,word) then
+            return true
+        end
+    end
+
+    -- xoá nhà nếu không quan trọng
+    for _,word in pairs(HOUSE_KEYWORDS) do
+        if string.find(name,word) then
+            if not HasImportantInside(obj) then
+                return true
+            end
+        end
+    end
+
+    return false
+end
+
+-- =========================
 -- 👤 PROCESS CHARACTER
 -- =========================
 
 local function ProcessCharacter(model)
+
     if not model:FindFirstChildOfClass("Humanoid") then return end
 
     for _,v in pairs(model:GetDescendants()) do
-        
+
         -- xoá phụ kiện
         if v:IsA("Accessory") then
             pcall(function() v:Destroy() end)
@@ -120,24 +175,6 @@ local function ProcessCharacter(model)
 end
 
 -- =========================
--- 🌳 CHECK XOÁ MAP
--- =========================
-
-local function ShouldDeleteModel(obj)
-    if not obj:IsA("Model") then return false end
-    if IsSystem(obj) then return false end
-
-    local name = string.lower(obj.Name)
-    for _,word in pairs(REMOVE_KEYWORDS) do
-        if string.find(name,word) then
-            return true
-        end
-    end
-
-    return false
-end
-
--- =========================
 -- ⚡ MAIN PROCESS
 -- =========================
 
@@ -146,7 +183,13 @@ local function Process(obj)
     if KEEP_SKY and obj:IsA("Sky") then return end
     if IsSystem(obj) then return end
 
-    -- xoá cây / nhà / decor
+    -- xoá phụ kiện toàn map
+    if obj:IsA("Accessory") then
+        pcall(function() obj:Destroy() end)
+        return
+    end
+
+    -- xoá cây / nhà
     if ShouldDeleteModel(obj) then
         pcall(function() obj:Destroy() end)
         return
