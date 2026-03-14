@@ -1,133 +1,147 @@
--- =========================
--- ⚙️ BLOX FRUITS FIX LAG
--- =========================
+-- BLOX FRUITS FIX LAG SAFE
 
-pcall(function()
-    settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
-end)
+local workspace = game.Workspace
+local players = game.Players
+local lighting = game.Lighting
+local runService = game:GetService("RunService")
 
-local Lighting = game:GetService("Lighting")
-local Players = game:GetService("Players")
-local Workspace = game:GetService("Workspace")
+math.randomseed(tick())
 
--- =========================
--- REMOVE HEAVY GRAPHICS
--- =========================
+-- ======================
+-- LIGHTING FIX
+-- ======================
 
-Lighting.GlobalShadows = false
-Lighting.FogEnd = 1000000
-Lighting.Brightness = 2
-Lighting.EnvironmentDiffuseScale = 0
-Lighting.EnvironmentSpecularScale = 0
+lighting.GlobalShadows = false
+lighting.Brightness = 2
+lighting.FogEnd = 100000
 
-for _,v in pairs(Lighting:GetDescendants()) do
-    if v:IsA("BloomEffect")
-    or v:IsA("SunRaysEffect")
-    or v:IsA("DepthOfFieldEffect")
-    or v:IsA("ColorCorrectionEffect") then
-        v:Destroy()
+if workspace:FindFirstChild("Terrain") then
+    workspace.Terrain.WaterWaveSize = 0
+    workspace.Terrain.WaterReflectance = 0
+end
+
+-- ======================
+-- EFFECT OPTIMIZER
+-- ======================
+
+local safeEffects = {
+    "Portal",
+    "Leviathan",
+    "Sea",
+    "Water"
+}
+
+local function isSafe(obj)
+    for _,v in pairs(safeEffects) do
+        if string.find(obj.Name:lower(), v:lower()) then
+            return true
+        end
     end
 end
 
--- =========================
--- REMOVE 90% SKILL EFFECTS
--- =========================
+local function optimizeEffects()
 
-local EFFECTS = {
-    "ParticleEmitter",
-    "Trail",
-    "Smoke",
-    "Fire",
-    "Sparkles",
-    "Explosion"
-}
+    for _,v in pairs(workspace:GetDescendants()) do
 
-local count = 0
+        if v:IsA("ParticleEmitter")
+        or v:IsA("Trail")
+        or v:IsA("Beam")
+        or v:IsA("Sparkles")
+        or v:IsA("Smoke")
+        or v:IsA("Fire") then
 
-Workspace.DescendantAdded:Connect(function(v)
+            if not isSafe(v) then
 
-    for _,name in pairs(EFFECTS) do
-        if v:IsA(name) then
+                local r = math.random(1,100)
 
-            count += 1
-
-            if count % 20 ~= 0 then
-                v.Enabled = false
-            else
-                -- 5% effect convert to black & white
-                if v.Parent and v.Parent:IsA("BasePart") then
-                    v.Parent.Color = Color3.fromRGB(120,120,120)
-                    v.Parent.Material = Enum.Material.SmoothPlastic
+                if r <= 90 then
+                    v.Enabled = false
+                elseif r <= 95 then
+                    if v.Color then
+                        v.Color = ColorSequence.new(
+                            Color3.fromRGB(0,0,0),
+                            Color3.fromRGB(255,255,255)
+                        )
+                    end
                 end
-            end
 
+            end
         end
+
     end
 
-end)
+end
 
--- =========================
--- NPC + PLAYER GRAY
--- =========================
+-- ======================
+-- GRAY PLAYER + NPC
+-- ======================
 
-local function GrayCharacter(char)
+local function grayChar(char)
 
     for _,v in pairs(char:GetDescendants()) do
-        if v:IsA("BasePart") then
-            v.Color = Color3.fromRGB(140,140,140)
+
+        if v:IsA("BasePart") and v.Name ~= "HumanoidRootPart" then
+            v.Color = Color3.fromRGB(120,120,120)
             v.Material = Enum.Material.SmoothPlastic
         end
 
         if v:IsA("Accessory") then
             v:Destroy()
         end
+
     end
 
 end
 
-for _,p in pairs(Players:GetPlayers()) do
+for _,p in pairs(players:GetPlayers()) do
     if p.Character then
-        GrayCharacter(p.Character)
+        grayChar(p.Character)
     end
-    p.CharacterAdded:Connect(GrayCharacter)
+    p.CharacterAdded:Connect(grayChar)
 end
 
--- =========================
--- MEDIUM REMOVE TREES + HOUSES
--- =========================
+-- ======================
+-- MEDIUM MAP CLEAN
+-- ======================
 
-local KEYWORDS = {
-    "tree","plant","bush","grass",
-    "house","hut","roof","wood",
-    "accessory","decoration"
+local removeNames = {
+    "tree",
+    "bush",
+    "plant",
+    "grass",
+    "decoration"
 }
 
-for _,v in pairs(Workspace:GetDescendants()) do
+for _,obj in pairs(workspace:GetDescendants()) do
 
-    if v:IsA("Model") or v:IsA("BasePart") then
+    if obj:IsA("Model") or obj:IsA("BasePart") then
 
-        local name = string.lower(v.Name)
+        local name = obj.Name:lower()
 
-        for _,k in pairs(KEYWORDS) do
+        for _,k in pairs(removeNames) do
+
             if string.find(name,k) then
-                v:Destroy()
-                break
+                if math.random(1,2) == 1 then
+                    obj:Destroy()
+                end
             end
+
         end
 
     end
 end
 
--- =========================
--- SAFE REMOVE SMALL PARTS
--- =========================
+-- ======================
+-- SAFE LOOP
+-- ======================
 
-for _,v in pairs(Workspace:GetDescendants()) do
-    if v:IsA("BasePart") then
-        if v.Transparency > 0.7 and not v.Anchored then
-            v:Destroy()
-        end
+task.spawn(function()
+
+    while true do
+        optimizeEffects()
+        task.wait(5)
     end
-end
 
-print("✔ Blox Fruits Fix Lag Loaded")
+end)
+
+print("✔ BLOX FRUITS FIX LAG SAFE LOADED")
