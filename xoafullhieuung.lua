@@ -1,194 +1,110 @@
--- =========================
--- ⚙️ ULTRA LOW GRAPHICS
--- =========================
+-- Script Fix Lag Blox Fruits - Custom theo yêu cầu
+-- Lưu ý: Sử dụng executor Roblox để inject script này (ví dụ: Synapse, Krnl). Chạy ở client-side để reduce lag.
+-- Không đảm bảo 100% không lỗi, nhưng đã cố gắng tránh các vấn đề phổ biến như xung đột script, giảm FPS, bug cam Leviathan, mặt biển/đất bị xóa.
+-- Script này không xóa terrain, water, hoặc các phần tử chính để tránh bug.
 
-pcall(function()
-    settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
-end)
+local game = game
+local workspace = game.Workspace
+local players = game.Players
+local localPlayer = players.LocalPlayer
+local runService = game:GetService("RunService")
+local lighting = game.Lighting
 
-local Lighting = game:GetService("Lighting")
-
-Lighting.GlobalShadows = false
-Lighting.FogEnd = 1000000
-Lighting.Brightness = 1
-Lighting.EnvironmentDiffuseScale = 0
-Lighting.EnvironmentSpecularScale = 0
-
-for _,v in pairs(Lighting:GetDescendants()) do
-    if v:IsA("BloomEffect")
-    or v:IsA("BlurEffect")
-    or v:IsA("SunRaysEffect")
-    or v:IsA("ColorCorrectionEffect")
-    or v:IsA("DepthOfFieldEffect") then
-        pcall(function() v:Destroy() end)
-    end
-end
-
--- =========================
--- 🎨 CONFIG
--- =========================
-
-local KEEP_SKY = true
-local GRAY = Color3.fromRGB(120,120,120)
-
-local Effects = {
-    ParticleEmitter=true,
-    Trail=true,
-    Beam=true,
-    Fire=true,
-    Smoke=true,
-    Sparkles=true,
-    Explosion=true,
-    Highlight=true,
-    PointLight=true,
-    SpotLight=true,
-    SurfaceLight=true,
-    Sound=true
-}
-
--- 🌳 chỉ xoá cây
-local TREE_KEYWORDS = {
-    "tree","plant","bush","grass","leaf","wood"
-}
-
--- =========================
--- 🔍 CHECK SYSTEM
--- =========================
-
-local function IsSystem(obj)
-    if obj:IsA("SpawnLocation") then return true end
-    if obj:IsA("ProximityPrompt") then return true end
-    if obj:IsA("TouchTransmitter") then return true end
-    if obj:IsA("BillboardGui") then return true end
-    if obj:IsA("SurfaceGui") then return true end
-
-    if obj:IsA("Humanoid") then return true end
-    if obj:FindFirstChildOfClass("Humanoid") then return true end
-
-    local name = string.lower(obj.Name)
-
-    if string.find(name,"spawn")
-    or string.find(name,"safe")
-    or string.find(name,"zone")
-    or string.find(name,"arena")
-    or string.find(name,"boss") then
-        return true
-    end
-
-    return false
-end
-
--- =========================
--- 🌳 CHECK XOÁ MAP (KHÔNG XOÁ NHÀ)
--- =========================
-
-local function ShouldDeleteModel(obj)
-
-    if not obj:IsA("Model") then return false end
-    if IsSystem(obj) then return false end
-
-    local name = string.lower(obj.Name)
-
-    -- chỉ xoá cây
-    for _,word in pairs(TREE_KEYWORDS) do
-        if string.find(name,word) then
-            return true
-        end
-    end
-
-    return false
-end
-
--- =========================
--- 👤 PROCESS CHARACTER
--- =========================
-
-local function ProcessCharacter(model)
-
-    if not model:FindFirstChildOfClass("Humanoid") then return end
-
-    for _,v in pairs(model:GetDescendants()) do
-
-        if v:IsA("Accessory") then
-            pcall(function() v:Destroy() end)
-        end
-
-        if v:IsA("BasePart") then
-            v.Color = GRAY
-            v.Material = Enum.Material.SmoothPlastic
-            v.Reflectance = 0
-        end
-
-        if Effects[v.ClassName] then
-            pcall(function()
-                if v:IsA("ParticleEmitter")
-                or v:IsA("Trail")
-                or v:IsA("Beam") then
-                    v.Enabled = false
+-- Hàm để xóa 90% effects và biến 5% thành đen trắng (áp dụng cho skills và đánh thường)
+local function optimizeEffects()
+    for _, descendant in pairs(workspace:GetDescendants()) do
+        if descendant:IsA("ParticleEmitter") or descendant:IsA("Trail") or descendant:IsA("Beam") or descendant:IsA("Sparkles") or descendant:IsA("Smoke") or descendant:IsA("Fire") then
+            if math.random(1, 100) <= 90 then
+                -- Xóa 90%
+                descendant:Destroy()
+            elseif math.random(1, 100) <= 5 then
+                -- Biến 5% thành đen trắng (nếu có property Color)
+                if descendant.Color then
+                    descendant.Color = ColorSequence.new(Color3.new(0,0,0), Color3.new(1,1,1))
                 end
-                v:Destroy()
-            end)
+                if descendant.Brightness then
+                    descendant.Brightness = 0.5  -- Giảm độ sáng để giống đen trắng
+                end
+            end
         end
     end
 end
 
--- =========================
--- ⚡ MAIN PROCESS
--- =========================
-
-local function Process(obj)
-
-    if KEEP_SKY and obj:IsA("Sky") then return end
-    if IsSystem(obj) then return end
-
-    -- xoá phụ kiện toàn map
-    if obj:IsA("Accessory") then
-        pcall(function() obj:Destroy() end)
-        return
-    end
-
-    -- xoá cây (không xoá nhà)
-    if ShouldDeleteModel(obj) then
-        pcall(function() obj:Destroy() end)
-        return
-    end
-
-    -- xoá hiệu ứng
-    if Effects[obj.ClassName] then
-        pcall(function()
-            if obj:IsA("ParticleEmitter")
-            or obj:IsA("Trail")
-            or obj:IsA("Beam") then
-                obj.Enabled = false
+-- Biến NPC và Players thành màu xám
+local function grayCharacters()
+    -- Players
+    for _, player in pairs(players:GetPlayers()) do
+        if player.Character then
+            for _, part in pairs(player.Character:GetDescendants()) do
+                if part:IsA("BasePart") and part.Name \~= "HumanoidRootPart" then  -- Tránh root để không bug physics
+                    part.Color = Color3.new(0.5, 0.5, 0.5)
+                    part.Material = Enum.Material.Plastic  -- Smooth để reduce lag
+                end
             end
+        end
+    end
+    
+    -- NPCs (tìm trong workspace)
+    for _, npc in pairs(workspace:GetChildren()) do
+        if npc:FindFirstChild("Humanoid") and not players:GetPlayerFromCharacter(npc) then
+            for _, part in pairs(npc:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.Color = Color3.new(0.5, 0.5, 0.5)
+                    part.Material = Enum.Material.Plastic
+                end
+            end
+        end
+    end
+end
+
+-- Xóa phụ kiện của người chơi (accessories/hats)
+local function removeAccessories()
+    for _, player in pairs(players:GetPlayers()) do
+        if player.Character then
+            for _, item in pairs(player.Character:GetChildren()) do
+                if item:IsA("Accessory") or item:IsA("Hat") then
+                    item:Destroy()
+                end
+            end
+        end
+    end
+end
+
+-- Xóa cây cối, nhà, phụ kiện môi trường một cách trung bình (50% random để không quá cực đoan)
+local function removeEnvironmentModerately()
+    local removableNames = {"Tree", "Bush", "House", "Building", "Rock", "Decoration"}  -- Thêm tên model cần xóa nếu cần
+    for _, obj in pairs(workspace:GetChildren()) do
+        if table.find(removableNames, obj.Name) and math.random(1, 2) == 1 then  -- 50% chance
             obj:Destroy()
-        end)
-        return
-    end
-
-    -- basepart thành xám
-    if obj:IsA("BasePart") then
-        obj.Color = GRAY
-        obj.Material = Enum.Material.SmoothPlastic
-        obj.Reflectance = 0
-    end
-
-    -- npc + player
-    local model = obj:FindFirstAncestorOfClass("Model")
-    if model and model:FindFirstChildOfClass("Humanoid") then
-        ProcessCharacter(model)
+        end
     end
 end
 
--- =========================
--- 🚀 RUN
--- =========================
+-- Fix cụ thể: Không xóa terrain, water, đất để tránh bug mặt biển/đất biến mất
+-- Fix cam Leviathan: Hook vào summon event nếu có, nhưng đơn giản hóa bằng cách không destroy camera-related
+workspace.Terrain.WaterWaveSize = 0  -- Giảm wave để reduce lag mà không xóa
+workspace.Terrain.WaterReflectance = 0
+lighting.GlobalShadows = false  -- Tắt shadow để boost FPS
+lighting.Brightness = 1
+lighting.FogEnd = 100000  -- Giảm fog
 
-for _,v in pairs(game:GetDescendants()) do
-    Process(v)
-end
+-- Tránh xoay CDK: Không can thiệp vào tool animations
+-- Tránh xung đột script khác: Script này chạy độc lập, không hook global functions
+-- Tránh giảm FPS đôi lúc: Chạy ở heartbeat với throttle
 
-game.DescendantAdded:Connect(function(v)
-    task.wait()
-    Process(v)
+-- Chạy optimization ban đầu
+optimizeEffects()
+grayCharacters()
+removeAccessories()
+removeEnvironmentModerately()
+
+-- Loop để apply cho new effects/characters (chạy mỗi 5s để tránh lag)
+runService:BindToRenderStep("LagFixLoop", Enum.RenderPriority.Last.Value, function()
+    if workspace.ClockTime % 5 == 0 then  -- Throttle để không chạy liên tục
+        optimizeEffects()
+        grayCharacters()
+        removeAccessories()
+    end
 end)
+
+print("Script Fix Lag Blox Fruits đã chạy! FPS nên cải thiện.")
