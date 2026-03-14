@@ -1,74 +1,72 @@
--- BLOX FRUITS FULL FIX LAG
+--// BLOX FRUITS ULTRA FIX LAG (DELTA)
 
-local Players = game:GetService("Players")
-local Workspace = game:GetService("Workspace")
+pcall(function()
+settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+end)
+
 local Lighting = game:GetService("Lighting")
+local Players = game:GetService("Players")
 
-math.randomseed(tick())
-
--- =====================
--- LIGHTING OPTIMIZE
--- =====================
-
+-- LIGHTING FIX
 Lighting.GlobalShadows = false
-Lighting.FogEnd = 100000
-Lighting.Brightness = 2
+Lighting.FogEnd = 1000000
+Lighting.Brightness = 1
 Lighting.EnvironmentDiffuseScale = 0
 Lighting.EnvironmentSpecularScale = 0
 
-for _,v in pairs(Lighting:GetDescendants()) do
-    if v:IsA("BloomEffect")
-    or v:IsA("SunRaysEffect")
-    or v:IsA("DepthOfFieldEffect") then
-        v.Enabled = false
-    end
-end
-
--- =====================
--- EFFECT REDUCER
--- =====================
-
-local function optimizeEffect(obj)
+-- EFFECT REMOVER
+local function removeEffects(obj)
 
     if obj:IsA("ParticleEmitter")
     or obj:IsA("Trail")
-    or obj:IsA("Beam")
-    or obj:IsA("Sparkles")
+    or obj:IsA("Fire")
     or obj:IsA("Smoke")
-    or obj:IsA("Fire") then
+    or obj:IsA("Sparkles") then
+        obj:Destroy()
+    end
 
-        local r = math.random(1,100)
-
-        if r <= 90 then
-            obj.Enabled = false
-        elseif r <= 95 then
-            if obj.Color then
-                obj.Color = ColorSequence.new(
-                    Color3.fromRGB(0,0,0),
-                    Color3.fromRGB(255,255,255)
-                )
-            end
-        end
-
+    if obj:IsA("Explosion") then
+        obj.BlastPressure = 0
+        obj.BlastRadius = 0
     end
 
 end
 
-for _,v in pairs(Workspace:GetDescendants()) do
-    optimizeEffect(v)
+-- MAP CLEAN (TREE / ACCESSORIES)
+local TREE_KEYWORDS = {
+"tree","plant","bush","grass","leaf"
+}
+
+local HOUSE_KEYWORDS = {
+"house","hut","furniture","chair","table"
+}
+
+local function cleanMap(v)
+
+    local name = string.lower(v.Name)
+
+    for _,k in pairs(TREE_KEYWORDS) do
+        if string.find(name,k) then
+            v:Destroy()
+        end
+    end
+
+    for _,k in pairs(HOUSE_KEYWORDS) do
+        if string.find(name,k) then
+            if math.random(1,3) == 1 then
+                v:Destroy()
+            end
+        end
+    end
+
 end
 
-Workspace.DescendantAdded:Connect(optimizeEffect)
-
--- =====================
--- PLAYER + NPC GRAY
--- =====================
-
+-- GRAY PLAYER + NPC
 local function grayCharacter(char)
 
     for _,v in pairs(char:GetDescendants()) do
 
-        if v:IsA("BasePart") and v.Name ~= "HumanoidRootPart" then
+        if v:IsA("BasePart") then
             v.Color = Color3.fromRGB(120,120,120)
             v.Material = Enum.Material.SmoothPlastic
         end
@@ -81,50 +79,33 @@ local function grayCharacter(char)
 
 end
 
-for _,p in pairs(Players:GetPlayers()) do
+-- PROCESS OBJECTS
+for _,v in pairs(game:GetDescendants()) do
 
-    if p.Character then
-        grayCharacter(p.Character)
-    end
+    removeEffects(v)
 
-    p.CharacterAdded:Connect(grayCharacter)
-
-end
-
--- =====================
--- MAP CLEAN (MEDIUM)
--- =====================
-
-local removeNames = {
-    "tree","bush","plant","grass",
-    "decoration","rock"
-}
-
-for _,obj in pairs(Workspace:GetDescendants()) do
-
-    if obj:IsA("BasePart") or obj:IsA("Model") then
-
-        local name = obj.Name:lower()
-
-        for _,k in pairs(removeNames) do
-
-            if string.find(name,k) then
-
-                if math.random(1,2) == 1 then
-
-                    obj.Transparency = 1
-                    if obj:IsA("BasePart") then
-                        obj.CanCollide = false
-                    end
-
-                end
-
-            end
-
-        end
-
+    if v:IsA("Model") then
+        cleanMap(v)
     end
 
 end
 
-print("✔ BLOX FRUITS FULL FIX LAG LOADED")
+-- CHARACTER APPLY
+local function setupCharacter(char)
+    grayCharacter(char)
+end
+
+for _,plr in pairs(Players:GetPlayers()) do
+    if plr.Character then
+        setupCharacter(plr.Character)
+    end
+
+    plr.CharacterAdded:Connect(setupCharacter)
+end
+
+-- AUTO REMOVE NEW EFFECTS
+game.DescendantAdded:Connect(function(v)
+
+    removeEffects(v)
+
+end)
