@@ -1,65 +1,133 @@
-local KEEP_SKY = true
-local GRAY = Color3.fromRGB(120,120,120)
+-- =========================
+-- ⚙️ BLOX FRUITS FIX LAG
+-- =========================
 
-local Effects = {
-    ParticleEmitter=true,
-    Trail=true,
-    Beam=true,
-    Fire=true,
-    Smoke=true,
-    Sparkles=true,
-    Explosion=true,
-    Highlight=true,
-    PointLight=true,
-    SpotLight=true,
-    SurfaceLight=true
+pcall(function()
+    settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+end)
+
+local Lighting = game:GetService("Lighting")
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+
+-- =========================
+-- REMOVE HEAVY GRAPHICS
+-- =========================
+
+Lighting.GlobalShadows = false
+Lighting.FogEnd = 1000000
+Lighting.Brightness = 2
+Lighting.EnvironmentDiffuseScale = 0
+Lighting.EnvironmentSpecularScale = 0
+
+for _,v in pairs(Lighting:GetDescendants()) do
+    if v:IsA("BloomEffect")
+    or v:IsA("SunRaysEffect")
+    or v:IsA("DepthOfFieldEffect")
+    or v:IsA("ColorCorrectionEffect") then
+        v:Destroy()
+    end
+end
+
+-- =========================
+-- REMOVE 90% SKILL EFFECTS
+-- =========================
+
+local EFFECTS = {
+    "ParticleEmitter",
+    "Trail",
+    "Smoke",
+    "Fire",
+    "Sparkles",
+    "Explosion"
 }
 
-local function IsSystem(obj)
+local count = 0
 
-    if obj:IsA("SpawnLocation") then return true end
-    if obj:IsA("ProximityPrompt") then return true end
-    if obj:IsA("TouchTransmitter") then return true end
-    if obj:IsA("BillboardGui") then return true end
-    if obj:IsA("SurfaceGui") then return true end
+Workspace.DescendantAdded:Connect(function(v)
 
-    local name = string.lower(obj.Name)
-    if string.find(name,"spawn")
-    or string.find(name,"teleport")
-    or string.find(name,"island")
-    or string.find(name,"safe") then
-        return true
+    for _,name in pairs(EFFECTS) do
+        if v:IsA(name) then
+
+            count += 1
+
+            if count % 20 ~= 0 then
+                v.Enabled = false
+            else
+                -- 5% effect convert to black & white
+                if v.Parent and v.Parent:IsA("BasePart") then
+                    v.Parent.Color = Color3.fromRGB(120,120,120)
+                    v.Parent.Material = Enum.Material.SmoothPlastic
+                end
+            end
+
+        end
     end
 
-    local model = obj:FindFirstAncestorOfClass("Model")
-    if model and model:FindFirstChildOfClass("Humanoid") then
-        return true
-    end
-
-    return false
-end
-
-local function Process(obj)
-
-    if KEEP_SKY and obj:IsA("Sky") then return end
-    if IsSystem(obj) then return end
-
-    if Effects[obj.ClassName] then
-        pcall(function() obj:Destroy() end)
-        return
-    end
-
-    if obj:IsA("BasePart") then
-        obj.Color = GRAY
-        obj.Material = Enum.Material.SmoothPlastic
-    end
-end
-
-for _,v in pairs(game:GetDescendants()) do
-    Process(v)
-end
-
-game.DescendantAdded:Connect(function(v)
-    task.wait()
-    Process(v)
 end)
+
+-- =========================
+-- NPC + PLAYER GRAY
+-- =========================
+
+local function GrayCharacter(char)
+
+    for _,v in pairs(char:GetDescendants()) do
+        if v:IsA("BasePart") then
+            v.Color = Color3.fromRGB(140,140,140)
+            v.Material = Enum.Material.SmoothPlastic
+        end
+
+        if v:IsA("Accessory") then
+            v:Destroy()
+        end
+    end
+
+end
+
+for _,p in pairs(Players:GetPlayers()) do
+    if p.Character then
+        GrayCharacter(p.Character)
+    end
+    p.CharacterAdded:Connect(GrayCharacter)
+end
+
+-- =========================
+-- MEDIUM REMOVE TREES + HOUSES
+-- =========================
+
+local KEYWORDS = {
+    "tree","plant","bush","grass",
+    "house","hut","roof","wood",
+    "accessory","decoration"
+}
+
+for _,v in pairs(Workspace:GetDescendants()) do
+
+    if v:IsA("Model") or v:IsA("BasePart") then
+
+        local name = string.lower(v.Name)
+
+        for _,k in pairs(KEYWORDS) do
+            if string.find(name,k) then
+                v:Destroy()
+                break
+            end
+        end
+
+    end
+end
+
+-- =========================
+-- SAFE REMOVE SMALL PARTS
+-- =========================
+
+for _,v in pairs(Workspace:GetDescendants()) do
+    if v:IsA("BasePart") then
+        if v.Transparency > 0.7 and not v.Anchored then
+            v:Destroy()
+        end
+    end
+end
+
+print("✔ Blox Fruits Fix Lag Loaded")
