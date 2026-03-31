@@ -1,76 +1,114 @@
---/ Ultimate Blox Fruits Lag Fix (Safe Version)
---// Giảm hiệu ứng, tránh bug CDK + Levi + FPS drop
+--// EXTREME FPS BOOST - BLOX FRUITS (SAFE MAX VERSION)
 
 if not game:IsLoaded() then game.Loaded:Wait() end
 
 local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
+local Lighting = game:GetService("Lighting")
 
--- Settings
-local REMOVE_EFFECT_PERCENT = 0.9
-local GRAYSCALE_PLAYERS = true
-local REMOVE_ACCESSORIES = true
-local SIMPLIFY_MAP = true
-
--- Safe check
-local function safe(pcallFunc)
-    local success, err = pcall(pcallFunc)
-    if not success then warn(err) end
+-- Safe call
+local function safe(f)
+    local s,e = pcall(f)
+    if not s then warn(e) end
 end
 
--- Remove / simplify effects
-local function handleEffect(obj)
-    if obj:IsA("ParticleEmitter") or obj:IsA("Trail") then
-        if math.random() < REMOVE_EFFECT_PERCENT then
-            obj.Enabled = false
-        else
-            obj.Color = ColorSequence.new(Color3.new(0,0,0), Color3.new(1,1,1))
-        end
+-- 1. XOÁ 100% HIỆU ỨNG (KHÔNG DESTROY)
+local function removeEffects(obj)
+
+    -- Particle / Trail / Beam
+    if obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Beam") then
+        obj.Enabled = false
+        obj.Lifetime = NumberRange.new(0)
+        obj.Transparency = NumberSequence.new(1)
     end
-    
+
+    -- Light
+    if obj:IsA("PointLight") or obj:IsA("SpotLight") or obj:IsA("SurfaceLight") then
+        obj.Enabled = false
+    end
+
+    -- Explosion
     if obj:IsA("Explosion") then
         obj.BlastPressure = 0
         obj.BlastRadius = 0
     end
 
-    if obj:IsA("Light") then
-        obj.Enabled = false
+    -- Effect Parts
+    if obj:IsA("BasePart") then
+        local n = obj.Name:lower()
+        if n:find("effect") or n:find("fx") or n:find("skill") then
+            obj.Transparency = 1
+            obj.Material = Enum.Material.SmoothPlastic
+        end
     end
-end
 
--- Gray players/NPC
-local function grayCharacter(char)
-    for _,v in pairs(char:GetDescendants()) do
-        if v:IsA("BasePart") then
-            v.Color = Color3.fromRGB(120,120,120)
-            v.Material = Enum.Material.SmoothPlastic
+    -- 2. XOÁ SOUND SKILL
+    if obj:IsA("Sound") then
+        if obj.Name:lower():find("skill") or obj.Volume > 0 then
+            obj.Volume = 0
         end
     end
 end
 
--- Remove accessories (safe)
-local function removeAccessories(char)
-    for _,v in pairs(char:GetChildren()) do
-        if v:IsA("Accessory") then
+-- 3. XOÁ SKY + ÁNH SÁNG (KHÔNG GÂY BUG MAP)
+safe(function()
+    for _,v in pairs(Lighting:GetChildren()) do
+        if v:IsA("Sky") then
             v:Destroy()
         end
     end
+
+    Lighting.GlobalShadows = false
+    Lighting.FogEnd = 9e9
+    Lighting.Brightness = 1
+    Lighting.ClockTime = 14
+end)
+
+-- 4. GIẢM TEXTURE MAP
+local function optimizeMap(obj)
+    if obj:IsA("BasePart") then
+        obj.Material = Enum.Material.SmoothPlastic
+        obj.Reflectance = 0
+    end
+
+    if obj:IsA("Decal") or obj:IsA("Texture") then
+        obj.Transparency = 1
+    end
 end
 
--- Optimize character
+-- 5. PLAYER + NPC
 local function optimizeChar(char)
     safe(function()
-        if GRAYSCALE_PLAYERS then
-            grayCharacter(char)
+        for _,v in pairs(char:GetDescendants()) do
+            if v:IsA("BasePart") then
+                v.Color = Color3.fromRGB(120,120,120)
+                v.Material = Enum.Material.SmoothPlastic
+            end
         end
 
-        if REMOVE_ACCESSORIES then
-            removeAccessories(char)
+        -- xoá phụ kiện
+        for _,v in pairs(char:GetChildren()) do
+            if v:IsA("Accessory") then
+                v:Destroy()
+            end
         end
     end)
 end
 
--- Apply to players
+-- APPLY BAN ĐẦU
+for _,v in pairs(workspace:GetDescendants()) do
+    removeEffects(v)
+    optimizeMap(v)
+end
+
+-- LISTENER (hiệu ứng mới sinh ra)
+workspace.DescendantAdded:Connect(function(v)
+    safe(function()
+        removeEffects(v)
+        optimizeMap(v)
+    end)
+end)
+
+-- APPLY PLAYER
 for _,plr in pairs(Players:GetPlayers()) do
     if plr.Character then
         optimizeChar(plr.Character)
@@ -78,37 +116,9 @@ for _,plr in pairs(Players:GetPlayers()) do
     plr.CharacterAdded:Connect(optimizeChar)
 end
 
--- Map optimize (KHÔNG phá map để tránh lỗi Levi / biển)
-if SIMPLIFY_MAP then
-    for _,v in pairs(workspace:GetDescendants()) do
-        safe(function()
-            if v:IsA("BasePart") then
-                if v.Name:lower():find("tree") or v.Name:lower():find("bush") then
-                    v.Transparency = 0.8
-                    v.Material = Enum.Material.SmoothPlastic
-                end
-            end
-        end)
-    end
-end
-
--- Effect listener
-workspace.DescendantAdded:Connect(function(obj)
-    safe(function()
-        handleEffect(obj)
-    end)
-end)
-
--- Initial scan
-for _,obj in pairs(workspace:GetDescendants()) do
-    handleEffect(obj)
-end
-
--- Camera fix (tránh bug Levi / biển)
+-- FIX CAMERA (TRÁNH BUG LEVI/BIỂN)
 safe(function()
-    workspace.CurrentCamera:GetPropertyChangedSignal("CameraSubject"):Connect(function()
-        workspace.CurrentCamera.FieldOfView = 70
-    end)
+    workspace.CurrentCamera.FieldOfView = 70
 end)
 
-print("✅ Lag Fix Loaded (Stable Version)")
+print("🔥 EXTREME FPS BOOST LOADED")
