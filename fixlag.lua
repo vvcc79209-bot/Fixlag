@@ -1,124 +1,113 @@
---// EXTREME FPS BOOST - BLOX FRUITS (SAFE MAX VERSION)
+--// FIX LAG EXTREME + GRAY MODE (SAFE)
+--// Tối ưu: xoá 95% hiệu ứng, giữ 5% dạng xám
+--// Tránh lỗi cam, skill, CDK
 
 if not game:IsLoaded() then game.Loaded:Wait() end
 
-local Players = game:GetService("Players")
 local Lighting = game:GetService("Lighting")
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
 
--- Safe call
-local function safe(f)
-    local s,e = pcall(f)
-    if not s then warn(e) end
+--// ===== SETTINGS =====
+local REMOVE_EFFECT_PERCENT = 0.95
+local KEEP_GRAY_PERCENT = 0.05
+
+--// ===== LIGHTING (toàn map xám trừ trời) =====
+Lighting.Brightness = 1
+Lighting.GlobalShadows = false
+Lighting.FogEnd = 9e9
+
+for _,v in pairs(Lighting:GetChildren()) do
+    if v:IsA("ColorCorrectionEffect") or v:IsA("BlurEffect") or v:IsA("SunRaysEffect") then
+        v:Destroy()
+    end
 end
 
--- 1. XOÁ 100% HIỆU ỨNG (KHÔNG DESTROY)
-local function removeEffects(obj)
+local cc = Instance.new("ColorCorrectionEffect")
+cc.Saturation = -1
+cc.TintColor = Color3.fromRGB(200,200,200) -- xám nhẹ
+cc.Parent = Lighting
 
-    -- Particle / Trail / Beam
-    if obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Beam") then
-        obj.Enabled = false
-        obj.Lifetime = NumberRange.new(0)
-        obj.Transparency = NumberSequence.new(1)
+--// ===== SKY (giữ lại nhưng xám nhẹ) =====
+local sky = Lighting:FindFirstChildOfClass("Sky")
+if sky then
+    sky.SkyboxBk = ""
+    sky.SkyboxDn = ""
+    sky.SkyboxFt = ""
+    sky.SkyboxLf = ""
+    sky.SkyboxRt = ""
+    sky.SkyboxUp = ""
+end
+
+--// ===== REMOVE EFFECT =====
+local function cleanEffects(obj)
+    if math.random() < REMOVE_EFFECT_PERCENT then
+        if obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Explosion") then
+            obj:Destroy()
+        end
+    else
+        -- giữ lại nhưng làm xám
+        if obj:IsA("ParticleEmitter") then
+            obj.Color = ColorSequence.new(Color3.fromRGB(150,150,150))
+        end
     end
+end
 
-    -- Light
-    if obj:IsA("PointLight") or obj:IsA("SpotLight") or obj:IsA("SurfaceLight") then
-        obj.Enabled = false
-    end
-
-    -- Explosion
-    if obj:IsA("Explosion") then
-        obj.BlastPressure = 0
-        obj.BlastRadius = 0
-    end
-
-    -- Effect Parts
+--// ===== MAP CLEAN (xoá cây, nhà, phụ kiện) =====
+local function simplifyMap(obj)
     if obj:IsA("BasePart") then
-        local n = obj.Name:lower()
-        if n:find("effect") or n:find("fx") or n:find("skill") then
-            obj.Transparency = 1
+        if obj.Name:lower():find("tree") 
+        or obj.Name:lower():find("leaf") 
+        or obj.Name:lower():find("grass")
+        or obj.Name:lower():find("house")
+        or obj.Name:lower():find("building") then
+            obj:Destroy()
+        else
             obj.Material = Enum.Material.SmoothPlastic
-        end
-    end
-
-    -- 2. XOÁ SOUND SKILL
-    if obj:IsA("Sound") then
-        if obj.Name:lower():find("skill") or obj.Volume > 0 then
-            obj.Volume = 0
+            obj.Color = Color3.fromRGB(170,170,170)
         end
     end
 end
 
--- 3. XOÁ SKY + ÁNH SÁNG (KHÔNG GÂY BUG MAP)
-safe(function()
-    for _,v in pairs(Lighting:GetChildren()) do
-        if v:IsA("Sky") then
-            v:Destroy()
-        end
-    end
-
-    Lighting.GlobalShadows = false
-    Lighting.FogEnd = 9e9
-    Lighting.Brightness = 1
-    Lighting.ClockTime = 14
-end)
-
--- 4. GIẢM TEXTURE MAP
-local function optimizeMap(obj)
-    if obj:IsA("BasePart") then
-        obj.Material = Enum.Material.SmoothPlastic
-        obj.Reflectance = 0
-    end
-
-    if obj:IsA("Decal") or obj:IsA("Texture") then
-        obj.Transparency = 1
-    end
-end
-
--- 5. PLAYER + NPC
-local function optimizeChar(char)
-    safe(function()
-        for _,v in pairs(char:GetDescendants()) do
-            if v:IsA("BasePart") then
-                v.Color = Color3.fromRGB(120,120,120)
-                v.Material = Enum.Material.SmoothPlastic
-            end
+--// ===== PLAYER + NPC GRAY =====
+local function grayCharacter(char)
+    for _,v in pairs(char:GetDescendants()) do
+        if v:IsA("BasePart") then
+            v.Color = Color3.fromRGB(160,160,160)
+            v.Material = Enum.Material.SmoothPlastic
         end
 
         -- xoá phụ kiện
-        for _,v in pairs(char:GetChildren()) do
-            if v:IsA("Accessory") then
-                v:Destroy()
-            end
+        if v:IsA("Accessory") then
+            v:Destroy()
         end
-    end)
+    end
 end
 
--- APPLY BAN ĐẦU
-for _,v in pairs(workspace:GetDescendants()) do
-    removeEffects(v)
-    optimizeMap(v)
-end
-
--- LISTENER (hiệu ứng mới sinh ra)
-workspace.DescendantAdded:Connect(function(v)
-    safe(function()
-        removeEffects(v)
-        optimizeMap(v)
-    end)
-end)
-
--- APPLY PLAYER
+--// áp dụng cho player
 for _,plr in pairs(Players:GetPlayers()) do
     if plr.Character then
-        optimizeChar(plr.Character)
+        grayCharacter(plr.Character)
     end
-    plr.CharacterAdded:Connect(optimizeChar)
+    plr.CharacterAdded:Connect(grayCharacter)
 end
 
--- FIX CAMERA (TRÁNH BUG LEVI/BIỂN)
-safe(function()
-    workspace.CurrentCamera.FieldOfView = 70
+--// ===== LOOP CLEAN =====
+RunService.RenderStepped:Connect(function()
+    for _,obj in pairs(workspace:GetDescendants()) do
+        pcall(function()
+            cleanEffects(obj)
+            simplifyMap(obj)
+        end)
+    end
 end)
 
-print("🔥 EXTREME FPS BOOST LOADED")
+--// ===== ANTI LAG WATER + CAMERA SAFE =====
+pcall(function()
+    workspace.Terrain.WaterWaveSize = 0
+    workspace.Terrain.WaterWaveSpeed = 0
+    workspace.Terrain.WaterReflectance = 0
+    workspace.Terrain.WaterTransparency = 1
+end)
+
+print("✅ FIX LAG ULTRA ACTIVATED")
