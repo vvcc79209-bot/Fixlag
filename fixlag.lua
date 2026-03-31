@@ -1,4 +1,4 @@
---// Ultimate Blox Fruits Lag Fix (Safe Version)
+--/ Ultimate Blox Fruits Lag Fix (Safe Version)
 --// Giảm hiệu ứng, tránh bug CDK + Levi + FPS drop
 
 if not game:IsLoaded() then game.Loaded:Wait() end
