@@ -1,112 +1,96 @@
---// CLEAN FIX LAG (SAFE - KHÔNG PHÁ MAP)
+--// FULL LAG FIX BLOX FRUITS (NO EFFECT + REMOVE TREE/HOUSE + GRAY MAP)
 
-if not game:IsLoaded() then
-    game.Loaded:Wait()
-end
+-- Chờ game load
+repeat task.wait() until game:IsLoaded()
 
-local gray = Color3.fromRGB(110,110,110)
+-- Settings
+local REMOVE_EFFECT = true
+local REMOVE_TREE = true
+local REMOVE_HOUSE = true
+local GRAY_WORLD = true
 
---// XOÁ EFFECT 100%
-local function removeEffects(obj)
-    if obj:IsA("ParticleEmitter")
-    or obj:IsA("Trail")
-    or obj:IsA("Smoke")
-    or obj:IsA("Fire")
-    or obj:IsA("Sparkles")
-    or obj:IsA("Beam")
-    or obj:IsA("Explosion") then
-        obj:Destroy()
+-- Hàm check giữ lại mặt đất
+local function isImportantPart(v)
+    if not v:IsA("BasePart") then return false end
+    
+    local name = v.Name:lower()
+    
+    -- Giữ lại mặt đất, map chính
+    if name:find("ground") or name:find("floor") or name:find("terrain") then
+        return true
     end
-end
-
---// XOÁ SOUND
-local function removeSound(obj)
-    if obj:IsA("Sound") then
-        obj:Destroy()
+    
+    -- giữ terrain
+    if v:IsDescendantOf(workspace.Terrain) then
+        return true
     end
+    
+    return false
 end
 
---// XOÁ CÂY + NHÀ + TRANG TRÍ (KHÔNG ĐỤNG MAP CHÍNH)
-local function removeTrash(obj)
-    if obj:IsA("Model") then
-        local name = string.lower(obj.Name)
+-- 1. XOÁ HIỆU ỨNG (skill, đánh thường, trái, kiếm, súng)
+if REMOVE_EFFECT then
+    for _,v in pairs(game:GetDescendants()) do
+        if v:IsA("ParticleEmitter") 
+        or v:IsA("Trail") 
+        or v:IsA("Beam") 
+        or v:IsA("Explosion") 
+        or v:IsA("Fire") 
+        or v:IsA("Smoke") 
+        or v:IsA("Sparkles") then
+            v:Destroy()
+        end
 
-        if string.find(name, "tree")
-        or string.find(name, "plant")
-        or string.find(name, "bush")
-        or string.find(name, "house")
-        or string.find(name, "building")
-        or string.find(name, "decoration")
-        or string.find(name, "grass") then
-            obj:Destroy()
+        -- Tắt ánh sáng
+        if v:IsA("PointLight") or v:IsA("SpotLight") or v:IsA("SurfaceLight") then
+            v.Enabled = false
         end
     end
 end
 
---// TỐI GIẢN PART + ĐỔI MÀU
-local function optimizePart(obj)
-    if obj:IsA("BasePart") then
-        local name = string.lower(obj.Name)
+-- 2. XOÁ CÂY + NHÀ
+if REMOVE_TREE or REMOVE_HOUSE then
+    for _,v in pairs(workspace:GetDescendants()) do
+        if v:IsA("Model") then
+            local name = v.Name:lower()
 
-        obj.Material = Enum.Material.SmoothPlastic
-        obj.Reflectance = 0
-        obj.CastShadow = false
-
-        -- 🌊 BIỂN
-        if string.find(name, "water") or string.find(name, "sea") then
-            obj.Color = gray
-        end
-
-        -- 🌍 MẶT ĐẤT
-        if string.find(name, "ground")
-        or string.find(name, "island")
-        or string.find(name, "sand")
-        or string.find(name, "floor") then
-            obj.Color = gray
+            if REMOVE_TREE and (name:find("tree") or name:find("bush") or name:find("plant")) then
+                v:Destroy()
+            elseif REMOVE_HOUSE and (name:find("house") or name:find("building") or name:find("home")) then
+                v:Destroy()
+            end
         end
     end
 end
 
---// XOÁ TEXTURE NHẸ (KHÔNG PHÁ MAP)
-local function removeTexture(obj)
-    if obj:IsA("Decal") or obj:IsA("Texture") then
-        obj:Destroy()
+-- 3. BIẾN MAP THÀNH MÀU XÁM (ĐẤT + BIỂN)
+if GRAY_WORLD then
+    for _,v in pairs(workspace:GetDescendants()) do
+        if v:IsA("BasePart") then
+            if isImportantPart(v) then
+                v.Color = Color3.fromRGB(120,120,120)
+                v.Material = Enum.Material.SmoothPlastic
+            end
+        end
+    end
+
+    -- Terrain (biển + đất)
+    if workspace:FindFirstChildOfClass("Terrain") then
+        local terrain = workspace:FindFirstChildOfClass("Terrain")
+        terrain.WaterColor = Color3.fromRGB(120,120,120)
+        terrain.WaterReflectance = 0
+        terrain.WaterTransparency = 0.3
+        terrain.WaterWaveSize = 0
+        terrain.WaterWaveSpeed = 0
     end
 end
 
---// APPLY
-for _,v in pairs(workspace:GetDescendants()) do
-    pcall(function()
-        removeEffects(v)
-        removeSound(v)
-        removeTrash(v)
-        removeTexture(v)
-        optimizePart(v)
-    end)
+-- 4. FIX CDK (giảm lỗi xoay + bug skill)
+-- Không xoá animation + body movers
+for _,v in pairs(game:GetDescendants()) do
+    if v:IsA("BodyVelocity") or v:IsA("BodyGyro") then
+        v.MaxForce = Vector3.new(0,0,0)
+    end
 end
 
---// ANTI EFFECT SPAWN
-workspace.DescendantAdded:Connect(function(v)
-    task.wait()
-    pcall(function()
-        removeEffects(v)
-        removeSound(v)
-        removeTexture(v)
-        optimizePart(v)
-    end)
-end)
-
---// LIGHT (KHÔNG ĐỤNG SUN)
-pcall(function()
-    local l = game:GetService("Lighting")
-    l.GlobalShadows = false
-    l.FogEnd = 9e9
-    l.Brightness = 1
-end)
-
---// FPS BOOST
-pcall(function()
-    settings().Rendering.QualityLevel = 1
-end)
-
-print("✅ FIX LAG STABLE DONE").
+print("✅ Lag Fix Loaded - Full Remove Effects + Remove Tree/House + Gray Map")
