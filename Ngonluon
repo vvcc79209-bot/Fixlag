@@ -1,25 +1,15 @@
---// FIX LAG BLOX FRUITS - CUSTOM
+--// BLOX FRUITS PRO FIX LAG
 
-if not game:IsLoaded() then
-    game.Loaded:Wait()
-end
+if not game:IsLoaded() then game.Loaded:Wait() end
 
--- SETTINGS
-local REMOVE_EFFECT_PERCENT = 0.9
-
--- SERVICES
 local Players = game:GetService("Players")
 local Lighting = game:GetService("Lighting")
 local Workspace = game:GetService("Workspace")
 
---// 1. GIẢM HIỆU ỨNG
+--// 1. XOÁ + GIẢM HIỆU ỨNG
 for _, v in pairs(game:GetDescendants()) do
     if v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Beam") then
-        if math.random() < REMOVE_EFFECT_PERCENT then
-            v.Enabled = false
-        else
-            v.Color = ColorSequence.new(Color3.fromRGB(120,120,120))
-        end
+        v.Enabled = false
     end
 
     if v:IsA("Explosion") or v:IsA("Fire") or v:IsA("Smoke") then
@@ -27,33 +17,39 @@ for _, v in pairs(game:GetDescendants()) do
     end
 end
 
---// 2. BIẾN PLAYER + NPC THÀNH MÀU XÁM
-local function grayCharacter(char)
-    for _, part in pairs(char:GetDescendants()) do
-        if part:IsA("BasePart") then
-            part.Color = Color3.fromRGB(120,120,120)
-            part.Material = Enum.Material.SmoothPlastic
+--// 2. GIỮ 1 ÍT HIỆU ỨNG → MÀU XÁM
+for _, v in pairs(game:GetDescendants()) do
+    if v:IsA("ParticleEmitter") then
+        v.Color = ColorSequence.new(Color3.fromRGB(120,120,120))
+    end
+end
+
+--// 3. PLAYER + NPC → XÁM
+local function grayChar(char)
+    for _, p in pairs(char:GetDescendants()) do
+        if p:IsA("BasePart") then
+            p.Color = Color3.fromRGB(120,120,120)
+            p.Material = Enum.Material.SmoothPlastic
         end
     end
 end
 
+-- Player
 for _, plr in pairs(Players:GetPlayers()) do
-    if plr.Character then
-        grayCharacter(plr.Character)
-    end
-    plr.CharacterAdded:Connect(grayCharacter)
+    if plr.Character then grayChar(plr.Character) end
+    plr.CharacterAdded:Connect(grayChar)
 end
 
 -- NPC
 for _, v in pairs(Workspace:GetDescendants()) do
     if v:FindFirstChild("Humanoid") and not Players:GetPlayerFromCharacter(v) then
-        grayCharacter(v)
+        grayChar(v)
     end
 end
 
---// 3. XOÁ PHỤ KIỆN
-local function removeAccessories(char)
-    for _, v in pairs(char:GetChildren()) do
+--// 4. XOÁ PHỤ KIỆN FULL
+local function removeAcc(char)
+    for _, v in pairs(char:GetDescendants()) do
         if v:IsA("Accessory") then
             v:Destroy()
         end
@@ -61,28 +57,54 @@ local function removeAccessories(char)
 end
 
 for _, plr in pairs(Players:GetPlayers()) do
-    if plr.Character then
-        removeAccessories(plr.Character)
-    end
-    plr.CharacterAdded:Connect(removeAccessories)
+    if plr.Character then removeAcc(plr.Character) end
+    plr.CharacterAdded:Connect(function(c)
+        task.wait(0.5)
+        removeAcc(c)
+    end)
 end
 
---// 4. XOÁ CÂY + NHÀ NHẸ (KHÔNG XOÁ MAP CHÍNH)
+-- NPC
+for _, v in pairs(Workspace:GetDescendants()) do
+    if v:FindFirstChild("Humanoid") then
+        removeAcc(v)
+    end
+end
+
+--// 5. XOÁ CÂY + NHÀ (AN TOÀN)
 for _, v in pairs(Workspace:GetDescendants()) do
     if v:IsA("Model") then
         local name = string.lower(v.Name)
-        if name:find("tree") or name:find("house") or name:find("building") then
-            v:Destroy()
+
+        if (name:find("tree") or name:find("bush") or name:find("grass")
+        or name:find("house") or name:find("building")) then
+            
+            if not v:FindFirstChild("Humanoid") 
+            and not v:FindFirstChild("SpawnLocation") then
+                pcall(function() v:Destroy() end)
+            end
         end
     end
 end
 
---// 5. GIỮ NGUYÊN MẶT ĐẤT + BIỂN (KHÔNG ĐỤNG TERRAIN)
--- Không xóa Terrain để tránh lỗi Levi / biển / map
+--// 6. BIẾN BIỂN + ĐẤT → MÀU XÁM
+for _, v in pairs(Workspace:GetDescendants()) do
+    if v:IsA("BasePart") then
+        if v.Name:lower():find("water") or v.Material == Enum.Material.Water then
+            v.Color = Color3.fromRGB(120,120,120)
+            v.Material = Enum.Material.SmoothPlastic
+        end
 
---// 6. GIẢM ÁNH SÁNG
+        -- đất (không xoá)
+        if v.Material == Enum.Material.Grass or v.Material == Enum.Material.Sand then
+            v.Color = Color3.fromRGB(120,120,120)
+            v.Material = Enum.Material.SmoothPlastic
+        end
+    end
+end
+
+--// 7. TẮT ÁNH SÁNG NẶNG
 Lighting.GlobalShadows = false
-Lighting.FogEnd = 100000
 Lighting.Brightness = 1
 
 for _, v in pairs(Lighting:GetDescendants()) do
@@ -91,8 +113,7 @@ for _, v in pairs(Lighting:GetDescendants()) do
     end
 end
 
---// 7. ANTI LAG FPS DROP
+--// 8. FPS BOOST
 settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
 
---// DONE
-print("✅ Fix lag loaded - 90% effect removed")
+print("✅ PRO FIX LAG LOADED")
