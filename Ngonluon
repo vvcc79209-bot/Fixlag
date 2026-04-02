@@ -1,4 +1,4 @@
---// FULL LAG FIX BLOX FRUITS (NO EFFECT + REMOVE TREE/HOUSE + GRAY MAP)
+-// FULL LAG FIX BLOX FRUITS (NO EFFECT + REMOVE TREE/HOUSE + GRAY MAP)
 
 -- Chờ game load
 repeat task.wait() until game:IsLoaded()
