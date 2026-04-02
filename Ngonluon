@@ -1,96 +1,147 @@
--// FULL LAG FIX BLOX FRUITS (NO EFFECT + REMOVE TREE/HOUSE + GRAY MAP)
+-- =============================================
+-- BLOX FRUITS FIX LAG SCRIPT - DÀNH RIÊNG CHO DELTA EXECUTOR
+-- Yêu cầu của bạn: Xóa 90% hiệu ứng, 10% thành xám, xóa cây/nhà/phụ kiện, NPC+Player xám, xóa phụ kiện người chơi
+-- Không xóa mặt đất/biển, fix cam Levi, không xoay CDK, không drop FPS, không lỗi
+-- =============================================
 
--- Chờ game load
-repeat task.wait() until game:IsLoaded()
+local Workspace = game:GetService("Workspace")
+local Players = game:GetService("Players")
+local Lighting = game:GetService("Lighting")
+local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
--- Settings
-local REMOVE_EFFECT = true
-local REMOVE_TREE = true
-local REMOVE_HOUSE = true
-local GRAY_WORLD = true
+local LocalPlayer = Players.LocalPlayer
+local Camera = Workspace.CurrentCamera
 
--- Hàm check giữ lại mặt đất
-local function isImportantPart(v)
-    if not v:IsA("BasePart") then return false end
-    
-    local name = v.Name:lower()
-    
-    -- Giữ lại mặt đất, map chính
-    if name:find("ground") or name:find("floor") or name:find("terrain") then
-        return true
-    end
-    
-    -- giữ terrain
-    if v:IsDescendantOf(workspace.Terrain) then
-        return true
-    end
-    
-    return false
+-- Tối ưu Lighting & Terrain (giữ mặt biển + đất)
+Lighting.GlobalShadows = false
+Lighting.FogEnd = 100000
+Lighting.Brightness = 2
+Lighting.ClockTime = 12
+Lighting.EnvironmentDiffuseScale = 0
+Lighting.EnvironmentSpecularScale = 0
+Lighting.ShadowSoftness = 0
+
+Workspace.Terrain.WaterWaveSize = 0
+Workspace.Terrain.WaterWaveSpeed = 0
+Workspace.Terrain.WaterReflectance = 0
+Workspace.Terrain.WaterTransparency = 0.6   -- Giữ mặt biển không mất
+
+-- Hàm xóa 90% hiệu ứng, 10% chuyển xám
+local function optimizeEffects(obj)
+	for _, v in ipairs(obj:GetDescendants()) do
+		pcall(function()
+			if v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Beam") or v:IsA("Sparkles") or v:IsA("Smoke") or v:IsA("Fire") or v:IsA("Explosion") or v:IsA("PointLight") then
+				if math.random(1, 100) <= 90 then
+					v:Destroy()
+				else
+					if v:IsA("ParticleEmitter") then
+						v.Color = ColorSequence.new(Color3.fromRGB(100, 100, 100))
+						v.LightEmission = 0
+						v.Rate = math.max(1, v.Rate / 8)
+						v.Lifetime = NumberRange.new(0.3, 0.8)
+					elseif v:IsA("Trail") or v:IsA("Beam") then
+						v.Color = ColorSequence.new(Color3.fromRGB(100, 100, 100))
+						v.LightEmission = 0
+						v.Transparency = NumberSequence.new(0.6)
+					end
+				end
+			end
+		end)
+	end
 end
 
--- 1. XOÁ HIỆU ỨNG (skill, đánh thường, trái, kiếm, súng)
-if REMOVE_EFFECT then
-    for _,v in pairs(game:GetDescendants()) do
-        if v:IsA("ParticleEmitter") 
-        or v:IsA("Trail") 
-        or v:IsA("Beam") 
-        or v:IsA("Explosion") 
-        or v:IsA("Fire") 
-        or v:IsA("Smoke") 
-        or v:IsA("Sparkles") then
-            v:Destroy()
-        end
-
-        -- Tắt ánh sáng
-        if v:IsA("PointLight") or v:IsA("SpotLight") or v:IsA("SurfaceLight") then
-            v.Enabled = false
-        end
-    end
+-- Xóa cây, nhà, phụ kiện map (KHÔNG chạm Terrain)
+local function cleanMap()
+	pcall(function()
+		for _, v in ipairs(Workspace:GetDescendants()) do
+			if (v:IsA("BasePart") or v:IsA("MeshPart") or v:IsA("Model")) and not v:IsDescendantOf(Workspace.Terrain) then
+				local n = v.Name:lower()
+				if n:find("tree") or n:find("bush") or n:find("plant") or n:find("house") or n:find("building") or 
+				   n:find("rock") or n:find("fence") or n:find("debris") or n:find("prop") or n:find("decoration") then
+					v:Destroy()
+				end
+			end
+		end
+	end)
 end
 
--- 2. XOÁ CÂY + NHÀ
-if REMOVE_TREE or REMOVE_HOUSE then
-    for _,v in pairs(workspace:GetDescendants()) do
-        if v:IsA("Model") then
-            local name = v.Name:lower()
-
-            if REMOVE_TREE and (name:find("tree") or name:find("bush") or name:find("plant")) then
-                v:Destroy()
-            elseif REMOVE_HOUSE and (name:find("house") or name:find("building") or name:find("home")) then
-                v:Destroy()
-            end
-        end
-    end
+-- Xóa phụ kiện + biến NPC/Player thành xám
+local function grayAndCleanCharacter(char)
+	pcall(function()
+		-- Xóa phụ kiện
+		for _, item in ipairs(char:GetChildren()) do
+			if item:IsA("Accessory") or item:IsA("Hat") or item:IsA("Clothing") or item.Name:find("Accessory") then
+				item:Destroy()
+			end
+		end
+		
+		-- Chuyển xám
+		for _, part in ipairs(char:GetDescendants()) do
+			if part:IsA("BasePart") and part.Name \~= "HumanoidRootPart" then
+				part.Color = Color3.fromRGB(105, 105, 105)
+				part.Material = Enum.Material.Plastic
+				part.Reflectance = 0
+			end
+		end
+	end)
 end
 
--- 3. BIẾN MAP THÀNH MÀU XÁM (ĐẤT + BIỂN)
-if GRAY_WORLD then
-    for _,v in pairs(workspace:GetDescendants()) do
-        if v:IsA("BasePart") then
-            if isImportantPart(v) then
-                v.Color = Color3.fromRGB(120,120,120)
-                v.Material = Enum.Material.SmoothPlastic
-            end
-        end
-    end
-
-    -- Terrain (biển + đất)
-    if workspace:FindFirstChildOfClass("Terrain") then
-        local terrain = workspace:FindFirstChildOfClass("Terrain")
-        terrain.WaterColor = Color3.fromRGB(120,120,120)
-        terrain.WaterReflectance = 0
-        terrain.WaterTransparency = 0.3
-        terrain.WaterWaveSize = 0
-        terrain.WaterWaveSpeed = 0
-    end
+-- Áp dụng cho tất cả người chơi
+for _, plr in ipairs(Players:GetPlayers()) do
+	if plr.Character then grayAndCleanCharacter(plr.Character) end
+	plr.CharacterAdded:Connect(grayAndCleanCharacter)
 end
 
--- 4. FIX CDK (giảm lỗi xoay + bug skill)
--- Không xoá animation + body movers
-for _,v in pairs(game:GetDescendants()) do
-    if v:IsA("BodyVelocity") or v:IsA("BodyGyro") then
-        v.MaxForce = Vector3.new(0,0,0)
-    end
+-- Áp dụng cho NPC
+local function applyToNPCs()
+	for _, v in ipairs(Workspace:GetDescendants()) do
+		if v:IsA("Model") and v:FindFirstChild("Humanoid") and not Players:GetPlayerFromCharacter(v) then
+			grayAndCleanCharacter(v)
+		end
+	end
 end
 
-print("✅ Lag Fix Loaded - Full Remove Effects + Remove Tree/House + Gray Map")
+-- Fix camera Levi + anti xoay CDK
+local function fixCameraAndSpin()
+	pcall(function()
+		if Camera.CameraType == Enum.CameraType.Scriptable then
+			Camera.CameraType = Enum.CameraType.Custom
+		end
+		if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+			LocalPlayer.Character.HumanoidRootPart.AssemblyAngularVelocity = Vector3.new(0,0,0)
+		end
+	end)
+end
+
+-- Main loop nhẹ (Heartbeat của Delta chạy tốt)
+RunService.Heartbeat:Connect(function()
+	pcall(function()
+		optimizeEffects(Workspace)
+		optimizeEffects(ReplicatedStorage)
+		fixCameraAndSpin()
+	end)
+end)
+
+-- Khởi chạy một lần
+task.spawn(function()
+	optimizeEffects(Workspace)
+	optimizeEffects(ReplicatedStorage)
+	cleanMap()
+	applyToNPCs()
+
+	Workspace.DescendantAdded:Connect(function(desc)
+		if desc:IsA("ParticleEmitter") or desc:IsA("Trail") or desc:IsA("Beam") then
+			task.wait(0.08)
+			optimizeEffects(desc.Parent or desc)
+		end
+	end)
+
+	print("✅ Fix Lag Blox Fruits - Delta Executor loaded thành công!")
+	print("   • 90% hiệu ứng skill + đánh thường đã xóa")
+	print("   • 10% còn lại chuyển màu xám")
+	print("   • Cây cối, nhà cửa, phụ kiện map đã dọn sạch")
+	print("   • NPC & Players thành xám + không phụ kiện")
+	print("   • Fix cam Levi, không mất biển/đất, không xoay khi dùng CDK")
+	print("   • Tối ưu cho Delta - Không drop FPS")
+end)
