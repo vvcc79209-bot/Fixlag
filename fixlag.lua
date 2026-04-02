@@ -1,146 +1,102 @@
---// FULL EXTREME LAG FIX - BLOX FRUITS
---// Safe version (hạn chế lỗi CDK, Levi, map bug)
+--===== FIX LAG + TỐI ƯU HÓA =====--
+-- Lưu ý: Chạy trong game Roblox (ưu tiên game có cơ chế tương tự Blox Fruits)
 
-if not game:IsLoaded() then
-    game.Loaded:Wait()
-end
-
--- Settings
-local REMOVE_EFFECTS = true
-local GRAY_WORLD = true
-local REMOVE_ACCESSORIES = true
-local SIMPLIFY_MAP = true
-
--- Function: Convert to gray
-local function toGray(obj)
-    if obj:IsA("BasePart") then
-        obj.Color = Color3.fromRGB(120,120,120)
-        obj.Material = Enum.Material.SmoothPlastic
-    elseif obj:IsA("Decal") or obj:IsA("Texture") then
-        obj:Destroy()
-    end
-end
-
--- 1. REMOVE ALL EFFECTS (100%)
-for _,v in pairs(game:GetDescendants()) do
-    if REMOVE_EFFECTS then
-        if v:IsA("ParticleEmitter") or
-           v:IsA("Trail") or
-           v:IsA("Beam") or
-           v:IsA("Explosion") or
-           v:IsA("Fire") or
-           v:IsA("Smoke") or
-           v:IsA("Sparkles") then
+-- 1. Xoá cây cối + nhà không cần thiết (giữ mặt đất)
+for _, v in pairs(workspace:GetDescendants()) do
+    if v:IsA("BasePart") and not v:IsA("Terrain") then
+        local name = v.Name:lower()
+        if name:match("tree") or name:match("leaf") or name:match("house") or name:match("building") or name:match("roof") or name:match("door") or name:match("window") or name:match("fence") or name:match("plant") then
             v:Destroy()
         end
     end
 end
 
--- Anti spawn new effects
-game.DescendantAdded:Connect(function(v)
-    if REMOVE_EFFECTS then
-        if v:IsA("ParticleEmitter") or
-           v:IsA("Trail") or
-           v:IsA("Beam") or
-           v:IsA("Explosion") or
-           v:IsA("Fire") or
-           v:IsA("Smoke") or
-           v:IsA("Sparkles") then
-            v:Destroy()
-        end
-    end
-end)
+-- 2. Biến biển + mặt đất thành màu xám (giữ nguyên mặt trời)
+local terrain = workspace.Terrain
+local waterMaterial = Enum.Material.SmoothPlastic
+local grayColor = Color3.fromRGB(120, 120, 120)
 
--- 2. GRAY NPC + PLAYERS
-local function grayCharacter(char)
-    for _,v in pairs(char:GetDescendants()) do
-        toGray(v)
-    end
-end
-
-for _,plr in pairs(game.Players:GetPlayers()) do
-    if plr.Character then
-        grayCharacter(plr.Character)
-    end
-    plr.CharacterAdded:Connect(grayCharacter)
-end
-
--- 3. REMOVE ACCESSORIES (safe)
-local function removeAccessories(char)
-    for _,v in pairs(char:GetChildren()) do
-        if v:IsA("Accessory") then
-            v:Destroy()
+-- Đổi màu mặt đất (nếu dùng Part)
+for _, part in pairs(workspace:GetDescendants()) do
+    if part:IsA("BasePart") and not part:IsA("Terrain") then
+        local yPos = part.Position.Y
+        if yPos < 5 or part.Material == Enum.Material.Water then
+            part.Color = grayColor
+            part.Material = waterMaterial
+            part.Reflectance = 0.2
+        elseif part.Name:lower():match("ground") or part.Name:lower():match("floor") then
+            part.Color = grayColor
+            part.Material = Enum.Material.SmoothPlastic
         end
     end
 end
 
-for _,plr in pairs(game.Players:GetPlayers()) do
-    if plr.Character then
-        removeAccessories(plr.Character)
-    end
-    plr.CharacterAdded:Connect(removeAccessories)
+-- Đổi màu Terrain (mặt đất và biển)
+if terrain then
+    local waterRegion = Region3.new(Vector3.new(-10000, -100, -10000), Vector3.new(10000, 5, 10000))
+    terrain:FillRegion(waterRegion, Enum.Material.Water, grayColor)
+    
+    local groundRegion = Region3.new(Vector3.new(-10000, -50, -10000), Vector3.new(10000, 100, 10000))
+    terrain:FillRegion(groundRegion, Enum.Material.Ground, grayColor)
 end
 
--- 4. SIMPLIFY MAP (KHÔNG xoá terrain để tránh lỗi Levi + biển)
-for _,v in pairs(workspace:GetDescendants()) do
-    if SIMPLIFY_MAP then
-        if v:IsA("BasePart") then
-            if v.Name ~= "HumanoidRootPart" then
-                v.Material = Enum.Material.SmoothPlastic
-                v.Reflectance = 0
-                v.CastShadow = false
-                if GRAY_WORLD then
-                    v.Color = Color3.fromRGB(150,150,150)
+-- 3. Xoá 100% hiệu ứng skill, trái, võ, kiếm, súng, đánh thường
+local effectTypes = {
+    "ParticleEmitter", "Trail", "Fire", "Smoke", "Sparkles", "Beam", 
+    "Decal", "Texture", "SelectionBox", "Highlight", "BillboardGui",
+    "Effect", "AttackEffect", "SkillEffect", "DamageEffect"
+}
+
+local function removeEffects(obj)
+    for _, effectType in pairs(effectTypes) do
+        for _, effect in pairs(obj:GetDescendants()) do
+            if effect:IsA(effectType) then
+                effect:Destroy()
+            end
+        end
+    end
+end
+
+-- Quét toàn bộ workspace và cả Player
+removeEffects(workspace)
+for _, player in pairs(game.Players:GetPlayers()) do
+    if player.Character then
+        removeEffects(player.Character)
+    end
+    if player.PlayerGui then
+        for _, gui in pairs(player.PlayerGui:GetDescendants()) do
+            if gui:IsA("Frame") or gui:IsA("ImageLabel") then
+                if gui.Name:lower():match("effect") or gui.Name:lower():match("skill") then
+                    gui:Destroy()
                 end
             end
-        elseif v:IsA("UnionOperation") or v:IsA("MeshPart") then
-            v.Material = Enum.Material.SmoothPlastic
-            if GRAY_WORLD then
-                v.Color = Color3.fromRGB(150,150,150)
-            end
         end
     end
 end
 
--- 5. LIGHTING OPTIMIZATION
-local Lighting = game:GetService("Lighting")
-
-Lighting.GlobalShadows = false
-Lighting.FogEnd = 9e9
-Lighting.Brightness = 1
-Lighting.ClockTime = 12
-
-for _,v in pairs(Lighting:GetDescendants()) do
-    if v:IsA("BloomEffect") or
-       v:IsA("BlurEffect") or
-       v:IsA("SunRaysEffect") or
-       v:IsA("ColorCorrectionEffect") or
-       v:IsA("DepthOfFieldEffect") then
-        v:Destroy()
+-- 4. Xoá âm thanh
+for _, sound in pairs(workspace:GetDescendants()) do
+    if sound:IsA("Sound") or sound:IsA("SoundGroup") then
+        sound:Stop()
+        sound:Destroy()
     end
 end
-
--- 6. REMOVE TREES / PROPS (mạnh)
-for _,v in pairs(workspace:GetDescendants()) do
-    if v:IsA("Model") then
-        local name = string.lower(v.Name)
-        if string.find(name, "tree") or
-           string.find(name, "bush") or
-           string.find(name, "rock") then
-            v:Destroy()
+for _, player in pairs(game.Players:GetPlayers()) do
+    if player.Character then
+        for _, sound in pairs(player.Character:GetDescendants()) do
+            if sound:IsA("Sound") then sound:Destroy() end
         end
     end
 end
 
--- 7. SKY (giữ lại nhưng làm xám nhẹ)
-local sky = Lighting:FindFirstChildOfClass("Sky")
-if sky then
-    sky.SkyboxBk = ""
-    sky.SkyboxDn = ""
-    sky.SkyboxFt = ""
-    sky.SkyboxLf = ""
-    sky.SkyboxRt = ""
-    sky.SkyboxUp = ""
+-- 5. Ngăn tạo lại hiệu ứng (giữ nguyên skill nhưng không hiển thị effect)
+local original = Instance.new
+setreadonly(Instance, false)
+Instance.new = function(self, className)
+    if className:match("Effect") or className:match("Particle") or className:match("Sound") then
+        return nil
+    end
+    return original(self, className)
 end
 
-print("✅ FULL LAG FIX LOADED (SAFE MODE)")
+print("✅ Đã fix lag: Xoá cây, nhà, hiệu ứng, âm thanh | Mặt đất + biển xám | Giữ mặt trời, không lỗi CDK")
