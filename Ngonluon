@@ -1,110 +1,104 @@
---// FIX LAG FULL - SAFE VERSION
+--// ULTRA FIX LAG 100% - NO EFFECT / NO SOUND / CLEAN MAP
 
 if not game:IsLoaded() then
     game.Loaded:Wait()
 end
 
---// SETTINGS
-local grayColor = Color3.fromRGB(120,120,120)
+local gray = Color3.fromRGB(110,110,110)
 
---// FUNCTION: REMOVE EFFECTS
-local function removeEffects(obj)
-    if obj:IsA("ParticleEmitter")
-    or obj:IsA("Trail")
-    or obj:IsA("Smoke")
-    or obj:IsA("Fire")
-    or obj:IsA("Sparkles")
-    or obj:IsA("Beam") then
-        obj:Destroy()
-    end
+--// SAFE CHECK GROUND (KHÔNG XOÁ)
+local function isGround(part)
+    local name = string.lower(part.Name)
+    return string.find(name, "ground")
+        or string.find(name, "island")
+        or string.find(name, "sand")
+        or string.find(name, "floor")
 end
 
---// FUNCTION: REMOVE SOUND
-local function removeSound(obj)
-    if obj:IsA("Sound") then
-        obj:Destroy()
-    end
-end
+--// REMOVE EVERYTHING USELESS
+local function nuke(obj)
+    pcall(function()
 
---// FUNCTION: SIMPLIFY PART
-local function simplifyPart(obj)
-    if obj:IsA("BasePart") then
-        obj.Material = Enum.Material.SmoothPlastic
-        obj.Reflectance = 0
-        obj.CastShadow = false
-    end
-end
-
---// FUNCTION: REMOVE TREE + BUILDING
-local function removeMapTrash(obj)
-    if obj:IsA("Model") then
-        local name = string.lower(obj.Name)
-
-        if string.find(name, "tree")
-        or string.find(name, "plant")
-        or string.find(name, "bush")
-        or string.find(name, "house")
-        or string.find(name, "building") then
+        -- ❌ XOÁ 100% EFFECT
+        if obj:IsA("ParticleEmitter")
+        or obj:IsA("Trail")
+        or obj:IsA("Smoke")
+        or obj:IsA("Fire")
+        or obj:IsA("Sparkles")
+        or obj:IsA("Beam")
+        or obj:IsA("Explosion") then
             obj:Destroy()
         end
-    end
-end
 
---// APPLY TO MAP
-for _,v in pairs(workspace:GetDescendants()) do
-    pcall(function()
+        -- ❌ XOÁ 100% SOUND
+        if obj:IsA("Sound") then
+            obj:Destroy()
+        end
 
-        -- xoá hiệu ứng
-        removeEffects(v)
+        -- ❌ XOÁ CÂY + NHÀ + TRANG TRÍ
+        if obj:IsA("Model") then
+            local name = string.lower(obj.Name)
 
-        -- xoá âm thanh
-        removeSound(v)
+            if string.find(name, "tree")
+            or string.find(name, "plant")
+            or string.find(name, "bush")
+            or string.find(name, "house")
+            or string.find(name, "building")
+            or string.find(name, "decoration")
+            or string.find(name, "grass") then
+                obj:Destroy()
+            end
+        end
 
-        -- xoá cây + nhà
-        removeMapTrash(v)
+        -- ❌ XOÁ TEXTURE / DECAL (GIẢM LAG CỰC MẠNH)
+        if obj:IsA("Decal") or obj:IsA("Texture") then
+            obj:Destroy()
+        end
 
-        -- tối ưu part
-        simplifyPart(v)
+        -- ⚙️ TỐI GIẢN PART
+        if obj:IsA("BasePart") then
+            obj.Material = Enum.Material.SmoothPlastic
+            obj.Reflectance = 0
+            obj.CastShadow = false
 
-        -- đổi màu biển + mặt đất
-        if v:IsA("BasePart") then
-            local name = string.lower(v.Name)
+            local name = string.lower(obj.Name)
 
-            if string.find(name, "water")
-            or string.find(name, "sea") then
-                v.Color = grayColor
-                v.Material = Enum.Material.SmoothPlastic
+            -- 🌊 BIỂN → XÁM
+            if string.find(name, "water") or string.find(name, "sea") then
+                obj.Color = gray
             end
 
-            -- mặt đất (không xoá)
-            if string.find(name, "ground")
-            or string.find(name, "island")
-            or string.find(name, "sand") then
-                v.Color = grayColor
-                v.Material = Enum.Material.SmoothPlastic
+            -- 🌍 MẶT ĐẤT → XÁM (KHÔNG XOÁ)
+            if isGround(obj) then
+                obj.Color = gray
             end
         end
 
     end)
 end
 
---// ANTI NEW EFFECT
+--// APPLY ALL
+for _,v in pairs(workspace:GetDescendants()) do
+    nuke(v)
+end
+
+--// ANTI SPAWN (QUAN TRỌNG: XOÁ SKILL NGAY LẬP TỨC)
 workspace.DescendantAdded:Connect(function(v)
     task.wait()
-
-    pcall(function()
-        removeEffects(v)
-        removeSound(v)
-        simplifyPart(v)
-    end)
+    nuke(v)
 end)
 
---// LIGHT FIX (không đụng mặt trời)
+--// LIGHT FIX (KHÔNG ĐỤNG MẶT TRỜI)
 pcall(function()
-    local lighting = game:GetService("Lighting")
-    lighting.GlobalShadows = false
-    lighting.FogEnd = 9e9
-    lighting.Brightness = 1
+    local l = game:GetService("Lighting")
+    l.GlobalShadows = false
+    l.FogEnd = 9e9
+    l.Brightness = 1
 end)
 
-print("✅ FIX LAG FULL DONE")
+--// FPS BOOST EXTRA
+pcall(function()
+    settings().Rendering.QualityLevel = 1
+end)
+
+print("🔥 ULTRA FIX LAG 100% DONE")
