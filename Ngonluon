@@ -1,25 +1,29 @@
---// ULTRA FIX LAG 100% - NO EFFECT / NO SOUND / CLEAN MAP
+--// EXTREME CLEAN MAP - MAX FPS
 
 if not game:IsLoaded() then
     game.Loaded:Wait()
 end
 
-local gray = Color3.fromRGB(110,110,110)
+local gray = Color3.fromRGB(100,100,100)
 
---// SAFE CHECK GROUND (KHÔNG XOÁ)
-local function isGround(part)
-    local name = string.lower(part.Name)
+--// CHECK MẶT ĐẤT (KHÔNG XOÁ)
+local function isImportantPart(obj)
+    if not obj:IsA("BasePart") then return false end
+    
+    local name = string.lower(obj.Name)
+    
     return string.find(name, "ground")
         or string.find(name, "island")
         or string.find(name, "sand")
         or string.find(name, "floor")
+        or string.find(name, "base")
 end
 
---// REMOVE EVERYTHING USELESS
-local function nuke(obj)
+--// XỬ LÝ OBJECT
+local function clean(obj)
     pcall(function()
 
-        -- ❌ XOÁ 100% EFFECT
+        -- ❌ XOÁ EFFECT 100%
         if obj:IsA("ParticleEmitter")
         or obj:IsA("Trail")
         or obj:IsA("Smoke")
@@ -28,67 +32,74 @@ local function nuke(obj)
         or obj:IsA("Beam")
         or obj:IsA("Explosion") then
             obj:Destroy()
+            return
         end
 
-        -- ❌ XOÁ 100% SOUND
+        -- ❌ XOÁ SOUND
         if obj:IsA("Sound") then
             obj:Destroy()
+            return
         end
 
-        -- ❌ XOÁ CÂY + NHÀ + TRANG TRÍ
+        -- ❌ XOÁ TEXTURE
+        if obj:IsA("Decal") or obj:IsA("Texture") then
+            obj:Destroy()
+            return
+        end
+
+        -- ❌ XOÁ MODEL KHÔNG CẦN THIẾT
         if obj:IsA("Model") then
             local name = string.lower(obj.Name)
 
-            if string.find(name, "tree")
-            or string.find(name, "plant")
-            or string.find(name, "bush")
-            or string.find(name, "house")
-            or string.find(name, "building")
-            or string.find(name, "decoration")
-            or string.find(name, "grass") then
+            if not string.find(name, "player")
+            and not string.find(name, "character")
+            and not string.find(name, "npc") then
                 obj:Destroy()
+                return
             end
         end
 
-        -- ❌ XOÁ TEXTURE / DECAL (GIẢM LAG CỰC MẠNH)
-        if obj:IsA("Decal") or obj:IsA("Texture") then
-            obj:Destroy()
-        end
-
-        -- ⚙️ TỐI GIẢN PART
+        -- ⚙️ XỬ LÝ PART
         if obj:IsA("BasePart") then
-            obj.Material = Enum.Material.SmoothPlastic
-            obj.Reflectance = 0
-            obj.CastShadow = false
-
             local name = string.lower(obj.Name)
 
-            -- 🌊 BIỂN → XÁM
+            -- 🌊 BIỂN
             if string.find(name, "water") or string.find(name, "sea") then
                 obj.Color = gray
+                obj.Material = Enum.Material.SmoothPlastic
+                obj.Reflectance = 0
+                obj.CastShadow = false
+                return
             end
 
-            -- 🌍 MẶT ĐẤT → XÁM (KHÔNG XOÁ)
-            if isGround(obj) then
+            -- 🌍 MẶT ĐẤT
+            if isImportantPart(obj) then
                 obj.Color = gray
+                obj.Material = Enum.Material.SmoothPlastic
+                obj.Reflectance = 0
+                obj.CastShadow = false
+                return
             end
+
+            -- ❌ XOÁ PART KHÁC
+            obj:Destroy()
         end
 
     end)
 end
 
---// APPLY ALL
+--// APPLY
 for _,v in pairs(workspace:GetDescendants()) do
-    nuke(v)
+    clean(v)
 end
 
---// ANTI SPAWN (QUAN TRỌNG: XOÁ SKILL NGAY LẬP TỨC)
+--// ANTI SPAWN (XOÁ NGAY)
 workspace.DescendantAdded:Connect(function(v)
     task.wait()
-    nuke(v)
+    clean(v)
 end)
 
---// LIGHT FIX (KHÔNG ĐỤNG MẶT TRỜI)
+--// LIGHT (KHÔNG ĐỤNG MẶT TRỜI)
 pcall(function()
     local l = game:GetService("Lighting")
     l.GlobalShadows = false
@@ -96,9 +107,9 @@ pcall(function()
     l.Brightness = 1
 end)
 
---// FPS BOOST EXTRA
+--// FPS BOOST
 pcall(function()
     settings().Rendering.QualityLevel = 1
 end)
 
-print("🔥 ULTRA FIX LAG 100% DONE")
+print("💀 EXTREME CLEAN DONE")
